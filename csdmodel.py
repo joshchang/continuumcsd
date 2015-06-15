@@ -159,6 +159,9 @@ class CSDModel(object):
         for key, val in self.volfrac.items():
             self.volfrac[key] = val*np.ones(self.N)
 
+        self.Nobject = sum ([item[1] for item in self.internalVars])
+        self.Nvfrac = (len(self.compartments)-1)*self.N
+
         """
         ODE integrator here. Add ability to customize the parameters in the future
         """
@@ -167,8 +170,7 @@ class CSDModel(object):
         self.odesolver.set_integrator('lsoda', nsteps=3000, first_step=1e-6, max_step=5e-3 )
         self.odesolver.set_initial_value(self.getInternalVars(),self.t)
 
-        self.Nobject = sum ([item[1] for item in self.internalVars])
-        self.Nvfrac = (len(self.compartments)-1)*self.N
+
 
         self.isAssembled = True
 
@@ -259,13 +261,11 @@ class CSDModel(object):
         """
         Ordering: Concentrations: internal vars
         """
-        Nobject = sum ([item[1] for item in self.internalVars])
-        Nvfrac = (len(self.compartments)-1)*self.N
-        temp = np.zeros(Nobject+Nvfrac)
+        temp = np.zeros(self.Nobject+self.Nvfrac)
         for (key, length, index) in self.internalVars:
             temp[index:(index+length)] = key.getInternalVars()
         for j in xrange(self.numcompartments-1):
-            temp[(Nobject+j*self.N):(Nobject+(j+1)*self.N)] = self.volumefraction(self.compartments[j])
+            temp[(self.Nobject+j*self.N):(self.Nobject+(j+1)*self.N)] = self.volumefraction(self.compartments[j])
         return temp
 
     def ode_jacobian(self,t,system_state):
@@ -276,10 +276,9 @@ class CSDModel(object):
         """
         pass
 
-    def volumefraction(self,compartment,system_state=None):
+    def volumefraction(self,compartment,system_state=None): #@TODO
         if system_state is not None:
             # compute the offset in the system_state vector for when volume fractions are stored
-            Nobject = sum ([item[1] for item in self.internalVars])
             # find out which compartment is indexed
             index = self.compartments.index(compartment)
             if index < len(self.compartments):
@@ -302,10 +301,8 @@ class CSDModel(object):
     def setInternalVars(self,system_state):
         for (key, length, index) in self.internalVars:
             key.setInternalVars(system_state[index:(index+length)])
-        Nobject = sum ([item[1] for item in self.internalVars])
-        Nvfrac = (len(self.compartments)-1)*self.N
-        for j in xrange(len(self.compartments)-1):
-            self.volfrac[self.compartments[j]] = system_state[(Nobject+j*self.N):(Nobject+(j+1)*self.N)]
+        for j in xrange(self.numcompartments-1):
+            self.volfrac[self.compartments[j]] = system_state[(self.Nobject+j*self.N):(self.Nobject+(j+1)*self.N)]
         return
 
     def __str__(self):

@@ -46,7 +46,7 @@ class CSDModelInterval(CSDModel):
 
     def assembleSystem(self):
         super(CSDModelInterval, self).assembleSystem()
-        # Add diffusion here
+        # 1D???
 
     def ode_rhs(self, t, system_state):
         """
@@ -74,16 +74,12 @@ class CSDModelInterval(CSDModel):
                 compartmentfluxes[key.outside].update(flux)
                 compartmentfluxes[key.inside].update(scalar_mult_dict(flux, -1.0))
                 wf = key.waterFlow(system_state)
-                condition = (volumefractions[key.outside]<0.95)*(volumefractions[key.inside]<0.95)
+                condition = (volumefractions[key.outside]<0.95)*(volumefractions[key.inside]<0.95) \
+                    *(volumefractions[key.outside]>0.05)*(volumefractions[key.outside]>0.05)
                 waterflows[key.outside] += wf*condition
                 waterflows[key.inside] -= wf*condition
             elif type(key) is not Compartment and type(key) is not CellCompartment:
                 temp[index:(index + length)] = key.get_dot_InternalVars(system_state, t)
-
-        #for key, val in compartmentfluxes.items():
-        #    compartmentfluxes[key] = scalar_mult_dict(compartmentfluxes[key],
-        #                                              1.0 / self.volumefraction(key, system_state))
-
 
 
         for (key, length, index) in self.internalVars:
@@ -92,12 +88,8 @@ class CSDModelInterval(CSDModel):
 
         # Also compute the fluxes and determine the changes in the concentrations
 
-        Nobject = sum([item[1] for item in self.internalVars])
-        Nvfrac = (len(self.compartments) - 1) * self.N
-        numcompartments = len(self.compartments)
-
-        for j in xrange(numcompartments - 1):
-            temp[(Nobject + j * self.N):(Nobject + (j + 1) * self.N)] = waterflows[self.compartments[j]]
+        for j in xrange(self.numcompartments - 1):
+            temp[(self.Nobject + j * self.N):(self.Nobject + (j + 1) * self.N)] = waterflows[self.compartments[j]]
 
         return temp
 
