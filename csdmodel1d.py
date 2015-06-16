@@ -25,7 +25,14 @@ def scalar_mult_dict(dictionary, scalar):
 
 
 class CSDModelInterval(CSDModel):
+
     def __init__(self, N, dx):
+        """
+
+        :param N: number of grid points
+        :param dx: spacing
+        :return:
+        """
         # Each compartment is associated with a volume fraction
         self.compartments = []
         self.volfrac = {}  # \sum v_j = 1, for v_j <=1
@@ -88,6 +95,10 @@ class CSDModelInterval(CSDModel):
 
         # Also compute the fluxes and determine the changes in the concentrations
 
+        """
+        Volume shifts
+
+        """
         for j in xrange(self.numcompartments - 1):
             temp[(self._N_internal_object + j * self.N):(self._N_internal_object + (j + 1) * self.N)] = waterflows[self.compartments[j]]
 

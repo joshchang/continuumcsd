@@ -65,17 +65,20 @@ class GHKChannel(Channel):
         invalues = self.membrane.inside.get_val_dict(system_state)
         outvalues = self.membrane.outside.get_val_dict(system_state)
         print "calling GHKcurrent, want GHK conductance call instead!!"
+        gating = power(m,self.p)*power(h,self.q)*F*species.z*V_m/phi
 
         #For safety, but SLOW!!!
         if not hasattr(V_m, '__iter__'):
             # V_m is not iterable, use ternary operator
-            gating = power(m,self.p)*power(h,self.q)*F*species.z*V_m/phi
+
+
             I = [ gmax* gating\
                 *( (self.membrane.inside.value(species) - exp(-V_m*species.z/phi)*self.membrane.outside.value(species))/(1.0-exp(-V_m*species.z/phi)) \
                 if V_m*species.z >0 else \
                 (self.membrane.inside.value(species)*exp(V_m*species.z/phi) -self.membrane.outside.value(species))/(exp(V_m*species.z/phi)-1.0 ) )\
                 for gmax,species in zip(self.gmax,self.species)]
         else:
+
             I = [ gmax*gating \
                 *np.fromiter( [ (cin-exp(-vm*species.z/phi)*cout)/(1.0-exp(-vm*species.z/phi)) \
                     if vm*species.z>0 else  \
@@ -277,8 +280,8 @@ class GHKChannel(Channel):
         if self.p == 0: self.h = self.get_h(system_state)
         elif self.q ==0: self.m = self.get_m(system_state)
         else:
-            self.m = values[:len(system_state)/2]
-            self.h = values[len(system_state)/2:]
+            self.m = self.get_m(system_state)
+            self.h = self.get_h(system_state)
         pass
 
     def get_dot_InternalVars(self,system_state,t):
@@ -368,9 +371,14 @@ class NaCaExchangePump(Pump):
         '''
 
         # Maybe this is faster??
+
+        I = (V_m<0)*(power(Nai/Nae,3)*(Cae/Cai)*exp(V_m/phi)-2.5)/(1+power(.0875/Nae,3))/(Cae/Cai+1.38e-3/Cai)/(exp(0.65*V_m/phi)+0.1)+\
+            (V_m>=0)*(power(Nai/Nae,3)*(Cae/Cai)-2.5*exp(-V_m/phi))/(1+power(.0875/Nae,3))/(Cae/Cai+1.38e-3/Cai)/(exp(-0.35*V_m/phi) + 0.1*exp(-V_m/phi) )
+
+        """
         I = np.where(V_m<0, (power(Nai/Nae,3)*(Cae/Cai)*exp(V_m/phi)-2.5)/(1+power(.0875/Nae,3))/(Cae/Cai+1.38e-3/Cai)/(exp(0.65*V_m/phi)+0.1), # First line runs if <0
             (power(Nai/Nae,3)*(Cae/Cai)-2.5*exp(-V_m/phi))/(1+power(.0875/Nae,3))/(Cae/Cai+1.38e-3/Cai)/(exp(-0.35*V_m/phi) + 0.1*exp(-V_m/phi) )) # Second line if >0
-
+        """
         return {ion:gmax*I for ion,gmax in zip(self.species,self.gmax)}
 
 class PMCAPump(Pump):
