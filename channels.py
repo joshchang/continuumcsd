@@ -14,6 +14,8 @@ import numpy as np
 import math
 
 class Channel(object):
+    system_state_offset = 0
+    N = 1
     """Generic ion channel class (also emcompasses pumps)
         Args:
             name (String): name of channel
@@ -26,7 +28,7 @@ class Channel(object):
             If V_m is defined, use it as the potential. Otherwise, use
             V_m()
         """
-        pass
+        return
 
     def water_permeability(self, system_state=None):
         """
@@ -46,7 +48,7 @@ class Channel(object):
         """
         Equilibriate the internal state
         """
-        pass
+        return
 
     def getInternalVars(self): return None
 
@@ -67,28 +69,52 @@ class GHKChannel(Channel):
         #For safety, but SLOW!!!
         if not hasattr(V_m, '__iter__'):
             # V_m is not iterable, use ternary operator
-            I = [ gmax*power(m,self.p)*power(h,self.q)*F*species.z*V_m/phi \
+            gating = power(m,self.p)*power(h,self.q)*F*species.z*V_m/phi
+            I = [ gmax* gating\
                 *( (self.membrane.inside.value(species) - exp(-V_m*species.z/phi)*self.membrane.outside.value(species))/(1.0-exp(-V_m*species.z/phi)) \
                 if V_m*species.z >0 else \
                 (self.membrane.inside.value(species)*exp(V_m*species.z/phi) -self.membrane.outside.value(species))/(exp(V_m*species.z/phi)-1.0 ) )\
                 for gmax,species in zip(self.gmax,self.species)]
         else:
-            I = [ gmax*power(m,self.p)*power(h,self.q)*F*V_m/phi \
+            I = [ gmax*gating \
                 *np.fromiter( [ (cin-exp(-vm*species.z/phi)*cout)/(1.0-exp(-vm*species.z/phi)) \
                     if vm*species.z>0 else  \
                     (cin*exp(vm*species.z/phi)-cout)/(exp(vm*species.z/phi)-1.0)
                     for (vm,cin,cout) in zip(V_m,self.membrane.inside.value(species),self.membrane.outside.value(species)) ], np.float64)
                 for gmax,species in zip(self.gmax,self.species)]
 
+
+
         return {ion:current for ion,current in zip(self.species,I)}
 
     def get_h(self, system_state=None):
-        V_m = self.membrane.phi(system_state)
-        return self.hinfty(V_m)
+        """
+        m^p h^q
+        :param system_state: Vector of the system state
+        :return: numpy array of h value or ones
+        """
+        if self.q == 0:
+            return np.ones(self.N)
+        if system_state is None:
+            V_m = self.membrane.phi(system_state)
+            return self.hinfty(V_m)
+        if self.p == 0:
+            return system_state[self.system_state_offset:self.system_state_offset+self.N]
+        else:
+            return system_state[self.system_state_offset+self.N:self.system_state_offset+2*self.N]
 
     def get_m(self, system_state = None):
-        V_m = self.membrane.phi(system_state)
-        return self.minfty(V_m)
+        """
+
+        :param system_state: numpy array of the system state
+        :return:
+        """
+        if self.p == 0:
+            return np.ones(self.N)
+        if system_state is None:
+            V_m = self.membrane.phi(system_state)
+            return self.minfty(V_m)
+        return system_state[self.system_state_offset:self.system_state_offset+self.N]
 
     def conductance(self, system_state = None):
         V_m = self.membrane.phi(system_state)
@@ -245,8 +271,7 @@ class GHKChannel(Channel):
         if self.p == 0 and self.q==0: return None
         elif self.q ==0: return self.get_m(system_state)
         elif self.q == 0: return self.get_h(system_state)
-        return None
-        return np.array([self.get_m(system_state),self.get_h(system_state)])
+        return np.array([self.get_m(system_state),self.get_h(system_state)]).flatten()
 
     def setInternalVars(self,system_state):
         if self.p == 0: self.h = self.get_h(system_state)
@@ -263,10 +288,9 @@ class GHKChannel(Channel):
         elif self.q == 0:
             temp = self.mdot(self.membrane.phi(system_state),self.get_m(system_state))
         else:
-            temp = np.zeros(2*self.membrane.points)
-            temp[:self.membrane.points] = self.mdot(self.membrane.phi(system_state),self.get_m(system_state))
-            temp[self.membrane.points:] = self.hdot(self.membrane.phi(system_state),self.get_h(system_state))
-        return None
+            temp = np.zeros(2*self.N)
+            temp[:self.membrane.N] = self.mdot(self.membrane.phi(system_state),self.get_m(system_state))
+            temp[self.membrane.N:] = self.hdot(self.membrane.phi(system_state),self.get_h(system_state))
         return temp
 
 
@@ -500,3 +524,9 @@ class HoleChannel(Channel):
     def __init__(self,species,gmax):
         self.species = species
         self.gmax = gmax
+
+class AquaPorin(Channel):
+    species = []
+    gmax = []
+    def water_permeability(self, system_state=None):
+        return 1e-5

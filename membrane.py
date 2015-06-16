@@ -49,13 +49,13 @@ class Membrane(Coupling):
         self.Cm = Cm
         self.phi_m = phi_m
         self.internalVars = []
-        self.points = 1
+        self.N = 1
 
     def setInternalVars(self,system_state):
         """
         InternalVars are the membrane potentials, and the ion variables
         """
-        self.phi_m = system_state[:self.points]
+        self.phi_m = system_state[:self.N]
         index = len(self.phi_m)
         for key, val in self.internalVars:
             key.setInternalVars(system_state[index:(index+len(val))])
@@ -95,6 +95,7 @@ class Membrane(Coupling):
             channel (Channel): The channel to add
             density (np.ndarray(self.N)): the number of channels per cell
         """
+
         if type(channel) is LeakChannel:
             # make this channel set steady system_state
             if channel.species in self.species:
@@ -117,18 +118,6 @@ class Membrane(Coupling):
         self.channeldensity[channel]=density
         # if channel is a leak channel, find its parameters by equilibriation
 
-        """
-        Register the internal variables for the channel
-        """
-        try:
-            val = channel.getInternalVars()
-            if len(val)>0:
-                if(len(self.internalVars)>0):
-                    self.internalVars.extend([(channel,len(val),self.internalVars[-1][2])])
-                else:
-                    self.internalVars.extend([(channel,len(val),len(self.phi_m))])
-        except:
-            pass
 
     def equilibriate(self):
         for channel in self.channels:
@@ -234,10 +223,6 @@ class Membrane(Coupling):
         totalpermeability = sum([channel.water_permeability(system_state) for channel in self.channels])
         return totalpermeability*(inside_t-outside_t)  # flow from in to out
 
-
-        #flows = {key: }
-
-
     def currents_and_fluxes(self, system_state = None):
         """
         call this to compute the source terms and phidot
@@ -262,7 +247,7 @@ class Membrane(Coupling):
 
     def phi(self,system_state=None):
         if system_state is None: return self.phi_m;
-        return system_state[self.system_state_offset:self.system_state_offset+self.points]
+        return system_state[self.system_state_offset:self.system_state_offset+self.N]
 
     def set_phi(self,phi_m): self.phi_m = phi_m
 

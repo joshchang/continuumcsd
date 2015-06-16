@@ -37,6 +37,8 @@ class CSDModel(object):
         self.membranes = []
 
         self.numdiffusers = 0
+        self._N_internal_object = 0
+        self._N_volumefraction = 0
         self.numpoisson = 0
         self.num_membrane_potentials = 0
         self.isAssembled = False
@@ -127,20 +129,25 @@ class CSDModel(object):
         self.internalVars = []
         index = 0
         for membrane in self.membranes:
-            index2 = 0
-            for channel in membrane.channels:
-                channeltmp = channel.getInternalVars()
-                if channeltmp is not None:
-                    self.internalVars.extend([ (channel, len(channeltmp),index2)])
-                    channel.system_state_offset = index+index2
-                    channel.internalLength = len(channeltmp)
-                    index2+=len(channeltmp)
             tmp = membrane.getInternalVars()
             if tmp is not None:
                 self.internalVars.extend( [(membrane,len(tmp),index)] )
                 membrane.system_state_offset = index # @TODO FIX!!
                 index += len(tmp)
-                membrane.points = self.N
+                membrane.N = self.N
+
+        for membrane in self.membranes:
+            for channel in membrane.channels:
+                channel.N = self.N
+                # Register internal variables for the channels involved
+                channeltmp = channel.getInternalVars()
+                if channeltmp is not None:
+                    self.internalVars.extend([ (channel, len(channeltmp),index)])
+                    channel.system_state_offset = index
+                    channel.internalLength = len(channeltmp)
+                    index+=len(channeltmp)
+
+            # Register any reactions associated with the given membrane?
         """
         Compartments at the end, so we may reuse some computations
         """
@@ -154,13 +161,22 @@ class CSDModel(object):
             tmp = compartment.getInternalVars()
             self.internalVars.extend( [(compartment,len(tmp),index)] )
             index += len(tmp)
-            compartment.points = self.N
+            compartment.N = self.N
+
+        for compartment in self.compartments:
+            for reaction in compartment.reactions:
+                tmp = reaction.getInternalVars()
+                if tmp is not None:
+                    self.internalVars.extend([ (reaction, len(tmp),index)])
+                    reaction.system_state_offset = index
+                    reaction.internalLength = len(tmp)
+                    index += len(tmp)
 
         for key, val in self.volfrac.items():
             self.volfrac[key] = val*np.ones(self.N)
 
-        self.Nobject = sum ([item[1] for item in self.internalVars])
-        self.Nvfrac = (len(self.compartments)-1)*self.N
+        self._N_internal_object = sum ([item[1] for item in self.internalVars])
+        self._N_volumefraction = (len(self.compartments)-1)*self.N
 
         """
         ODE integrator here. Add ability to customize the parameters in the future
@@ -223,7 +239,7 @@ class CSDModel(object):
             ydot(numpy.ndarray)
             ordering: internal vars for each variable in self.internalVars
         """
-        temp = np.zeros(self.Nobject+self.Nvfrac)
+        temp = np.zeros(self._N_internal_object+self._N_volumefraction)
         """
         Loop through once to do necessary pre-computation. This code relies on the
         membranes coming first in self.internalVars for the model. Otherwise, the
@@ -253,7 +269,7 @@ class CSDModel(object):
         #Also compute the fluxes and determine the changes in the concentrations
 
         for j in xrange(self.numcompartments-1):
-            temp[(self.Nobject+j*self.N):(self.Nobject+(j+1)*self.N)] = waterflows[self.compartments[j]]
+            temp[(self._N_internal_object+j*self.N):(self._N_internal_object+(j+1)*self.N)] = waterflows[self.compartments[j]]
 
         return temp
 
@@ -261,11 +277,11 @@ class CSDModel(object):
         """
         Ordering: Concentrations: internal vars
         """
-        temp = np.zeros(self.Nobject+self.Nvfrac)
+        temp = np.zeros(self._N_internal_object+self._N_volumefraction)
         for (key, length, index) in self.internalVars:
             temp[index:(index+length)] = key.getInternalVars()
         for j in xrange(self.numcompartments-1):
-            temp[(self.Nobject+j*self.N):(self.Nobject+(j+1)*self.N)] = self.volumefraction(self.compartments[j])
+            temp[(self._N_internal_object+j*self.N):(self._N_internal_object+(j+1)*self.N)] = self.volumefraction(self.compartments[j])
         return temp
 
     def ode_jacobian(self,t,system_state):
@@ -292,7 +308,7 @@ class CSDModel(object):
         if system_state is None:
             return self.volfrac
         for j in xrange(self.numcompartments-1):
-            vfrac[self.compartments[j]] = system_state[(self.Nobject+j*self.N):(self.Nobject+(j+1)*self.N)]
+            vfrac[self.compartments[j]] = system_state[(self._N_internal_object+j*self.N):(self._N_internal_object+(j+1)*self.N)]
         totalfrac = sum(vfrac.values(),axis = 0)
         vfrac[self.compartments[self.numcompartments-1]]= 1.0-totalfrac
         return vfrac
@@ -302,7 +318,7 @@ class CSDModel(object):
         for (key, length, index) in self.internalVars:
             key.setInternalVars(system_state[index:(index+length)])
         for j in xrange(self.numcompartments-1):
-            self.volfrac[self.compartments[j]] = system_state[(self.Nobject+j*self.N):(self.Nobject+(j+1)*self.N)]
+            self.volfrac[self.compartments[j]] = system_state[(self._N_internal_object+j*self.N):(self._N_internal_object+(j+1)*self.N)]
         return
 
     def __str__(self):

@@ -31,7 +31,7 @@ class Compartment(object):
         self.internalVars = []
         self.system_state_offset = 0
         self.species_internal_lookup = {}
-        self.points = 1
+        self.N = 1
 
     def __str__(self):
         return self.name
@@ -63,14 +63,14 @@ class Compartment(object):
         if system_state is None: return self.values[species]
         return system_state[self.system_state_offset\
             +self.species_internal_lookup[species]:self.system_state_offset\
-            +self.species_internal_lookup[species]+self.points]
+            +self.species_internal_lookup[species]+self.N]
 
     def get_val_dict(self,system_state=None):
         if system_state is None: return self.values
         # else, return corresponding entries in system_state
         return { species: system_state[self.system_state_offset\
                 +self.species_internal_lookup[species]:self.system_state_offset\
-                +self.species_internal_lookup[species]+self.points] for species in self.species}
+                +self.species_internal_lookup[species]+self.N] for species in self.species}
 
     def setInternalVars(self,values):
         j = 0

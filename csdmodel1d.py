@@ -57,7 +57,7 @@ class CSDModelInterval(CSDModel):
             ordering: internal vars for each variable in self.internalVars
         """
 
-        temp = np.zeros(self.Nobject + self.Nvfrac)
+        temp = np.zeros(self._N_internal_object + self._N_volumefraction)
         """
         Loop through once to do necessary pre-computation. This code relies on the
         membranes coming first in self.internalVars for the model. Otherwise, the
@@ -89,7 +89,7 @@ class CSDModelInterval(CSDModel):
         # Also compute the fluxes and determine the changes in the concentrations
 
         for j in xrange(self.numcompartments - 1):
-            temp[(self.Nobject + j * self.N):(self.Nobject + (j + 1) * self.N)] = waterflows[self.compartments[j]]
+            temp[(self._N_internal_object + j * self.N):(self._N_internal_object + (j + 1) * self.N)] = waterflows[self.compartments[j]]
 
         return temp
 

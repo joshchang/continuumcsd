@@ -25,7 +25,6 @@ class Buffer(Reaction):
     Buffer reactions species + free buffer <--> buffered species
     Internal variable is the amount of free buffer
     """
-    innervars = 1 # number of internal states to track
     species = set()
     def __init__(self,species, capacity, kon, koff):
         self.capacity = capacity # concentration capacity
