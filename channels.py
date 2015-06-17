@@ -314,11 +314,11 @@ class HHChannel(Channel):
         m = self.m(system_state)
         invalues = self.membrane.inside.get_val_dict(system_state)
         outvalues = self.membrane.outside.get_val_dict(system_state)
-        Eion = [ self.membrane.phi_ion(species,system_state) for species in self.species]
+        Eion = [ phi/species.z*(np.log(outvalues[species])-np.log(invalues[species])) for species in self.species]
         return self.gmax*(V_m-Eion)
 
     def species_current(self,species,system_state = None):
-        E =  [ self.membrane.phi_ion(species) for species in self.species]
+        E =  [ phi/species.z*(np.log(outvalues[species])-np.log(invalues[species])) for species in self.species]
         return self.gmax[self.species.index(species)]*(V_m-E)
 
 
@@ -331,8 +331,9 @@ class LeakChannel(HHChannel):
         V_m = self.membrane.phi(system_state)
         invalues = self.membrane.inside.get_val_dict(system_state)
         outvalues = self.membrane.outside.get_val_dict(system_state)
+        species = self.species
 
-        return {self.species: self.gmax*(V_m-self.membrane.phi_ion(self.species,system_state))}
+        return {species: self.gmax*(V_m-phi/species.z*(np.log(outvalues[species])-np.log(invalues[species])))}
 
     def set_gmax(self,gmax):
         self.gmax = gmax
@@ -459,7 +460,7 @@ class NonSpecificChlorideChannel(Channel):
         V_m = self.membrane.phi(system_state)
         invalues = self.membrane.inside.get_val_dict(system_state)
         outvalues = self.membrane.outside.get_val_dict(system_state)
-        return {Cl: self.gmax*(V_m-self.membrane.phi_ion(Cl,system_state)) }
+        return {Cl: self.gmax*(V_m-phi/Cl.z*(np.log(outvalues[Cl])-np.log(invalues[Cl]))) }
 
     def current_infty(self,V_m):
         return self.current(V_m)
@@ -471,7 +472,7 @@ class KIRChannel(Channel):
         V_m = self.membrane.phi(system_state)
         invalues = self.membrane.inside.get_val_dict(system_state)
         outvalues = self.membrane.outside.get_val_dict(system_state)
-        return {K:1.0*self.gmax* (V_m-self.membrane.phi_ion(K,system_state)) \
+        return {K:1.0*self.gmax* (V_m-phi/K.z*(np.log(outvalues[K])-np.log(invalues[K]))) \
             /(sqrt(outvalues[K])*(1.0+exp(V_m+0.01+0.08 )))  }
 
     def current_infty(self,V_m):
@@ -536,7 +537,7 @@ class HoleChannel(Channel):
         V_m = self.membrane.phi(system_state)
         invalues = self.membrane.inside.get_val_dict(system_state)
         outvalues = self.membrane.outside.get_val_dict(system_state)
-        return {species:self.gmax*(V_m-self.membrane.phi_ion(species)) for species in self.species }
+        return {species:self.gmax*(V_m-phi/species.z*(np.log(outvalues[species])-np.log(invalues[species]))) for species in self.species }
 
     def __init__(self,species,gmax):
         self.species = species
