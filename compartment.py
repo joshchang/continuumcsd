@@ -106,15 +106,31 @@ class Compartment(object):
                 electrodiffusion = 0
                 if dx>0 and self.diffusive:
                     # Add diffusion somehow...
-                    dconc = np.gradient(concentration,dx,edge_order=2)
-                    ddconc = np.gradient(dconc,dx,edge_order=2)
-                    dconc[0]=dconc[-1] = 0.0 # BC
-                    dvolumefraction = np.gradient(volumefraction,dx,edge_order=2)
+                    dconc = np.zeros(self.N)
+                    dconc[1:-1] = (concentration[2:]-concentration[:-2])/dx
+                    ddconc = np.zeros(self.N)
+                    ddconc[1:-1] = (concentration[2:]- 2*concentration[1:-1]+ concentration[:-2])/dx**2
+                    ddconc[0] = dconc[1]/dx
+                    ddconc[-1] = -dconc[-2]/dx
+                    dvolumefraction = np.zeros(self.N)
+                    dvolumefraction[1:-1] = (volumefraction[2:]-volumefraction[:-2])/dx
+                    dvolumefraction[0] = (volumefraction[1]-volumefraction[0])/dx
+                    dvolumefraction[-1] = (volumefraction[-1]-volumefraction[-2])/dx
+                    #np.gradient(volumefraction,dx,edge_order=2)
                     diffusionterm = self.diffusivities[key]*volumefraction*ddconc+self.diffusivities[key]*dvolumefraction*dconc
                     phi = self.phi(system_state)
                     try:
-                        dphi = np.gradient(phi,dx,edge_order=2)
+                        """
+                        dphi= np.gradient(phi,dx,edge_order=2)
                         ddphi = np.gradient(dphi,dx,edge_order=2)
+                        """
+
+                        dphi = np.zeros(self.N)
+                        ddphi = np.zeros(self.N)
+                        dphi[1:-1] = (phi[2:]-phi[:-2])/dx
+                        ddphi[1:-1] = (phi[2:]+2*phi[1:-1]-phi[:-2])/dx**2
+                        ddphi[0] = dphi[1]/dx
+                        ddphi[-1] = -dphi[-1]/dx
 
                     except:
                         dphi = 0

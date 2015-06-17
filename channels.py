@@ -73,18 +73,26 @@ class GHKChannel(Channel):
 
 
             I = [ gmax* gating\
-                *( (self.membrane.inside.value(species) - exp(-V_m*species.z/phi)*self.membrane.outside.value(species))/(1.0-exp(-V_m*species.z/phi)) \
+                *( (invalues[species] - exp(-V_m*species.z/phi)*outvalues[species])/(1.0-exp(-V_m*species.z/phi)) \
                 if V_m*species.z >0 else \
-                (self.membrane.inside.value(species)*exp(V_m*species.z/phi) -self.membrane.outside.value(species))/(exp(V_m*species.z/phi)-1.0 ) )\
+                (invalues[species]*exp(V_m*species.z/phi) -outvalues[species])/(exp(V_m*species.z/phi)-1.0 ) )\
                 for gmax,species in zip(self.gmax,self.species)]
         else:
-
+            """
             I = [ gmax*gating \
-                *np.fromiter( [ (cin-exp(-vm*species.z/phi)*cout)/(1.0-exp(-vm*species.z/phi)) \
+                *np.fromiter( [ (invalues[species]-exp(-vm*species.z/phi)*outvalues[species])/(1.0-exp(-vm*species.z/phi)) \
                     if vm*species.z>0 else  \
-                    (cin*exp(vm*species.z/phi)-cout)/(exp(vm*species.z/phi)-1.0)
-                    for (vm,cin,cout) in zip(V_m,self.membrane.inside.value(species),self.membrane.outside.value(species)) ], np.float64)
+                    (invalues[species]*exp(vm*species.z/phi)-outvalues[species])/(exp(vm*species.z/phi)-1.0)
+                    for vm in V_m], np.float64)
                 for gmax,species in zip(self.gmax,self.species)]
+            """
+            insidestuff = vm*species.z/phi
+            condition = (insidestuff>0)
+            I = [
+                gmax*gating*(condition*(invalues[species]-exp(-insidestuff)*outvalues[species])/(1.0-exp(-insidestuff)) +\
+                (condition-1)*(invalues[species]*exp(insidestuff)-outvalues[species])/(exp(insidestuff)-1.0)) \
+                for gmax, species in zip(self.gmax, self.species)
+            ]
 
 
 
@@ -323,7 +331,8 @@ class LeakChannel(HHChannel):
         V_m = self.membrane.phi(system_state)
         invalues = self.membrane.inside.get_val_dict(system_state)
         outvalues = self.membrane.outside.get_val_dict(system_state)
-        return {self.species: self.gmax*(V_m-self.membrane.phi_ion(self.species))}
+
+        return {self.species: self.gmax*(V_m-self.membrane.phi_ion(self.species,system_state))}
 
     def set_gmax(self,gmax):
         self.gmax = gmax
