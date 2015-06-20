@@ -90,12 +90,16 @@ class CSDModelInterval(CSDModel):
                 condition = wf > 0
                 waterflows[key.outside] += condition1*condition4*condition*wf + condition2*condition3*(1-condition)*wf
                 waterflows[key.inside] -= condition1*condition4*condition*wf - condition1*condition3*(1-condition)*wf
-            if type(key) is Reaction:
+
+            elif type(key) is Reaction:
                 flux = key.flux(system_state)
                 compartmentfluxes[key.compartment].update(flux)
 
             elif type(key) is not Compartment and type(key) is not CellCompartment:
-                temp[index:(index + length)] = key.get_dot_InternalVars(system_state, t)
+                try:
+                    temp[index:(index + length)] = key.get_dot_InternalVars(system_state, t)
+                except:
+                    print key.name
 
 
         for (key, length, index) in self.internalVars:
