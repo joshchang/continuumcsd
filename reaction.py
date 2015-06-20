@@ -34,6 +34,7 @@ class Buffer(Reaction):
         self.kon = kon
         self.koff = koff
         self.species.add(species)
+        self.compartment = None
 
     def equilibriate(self):
         self.state = self.capacity-self.kon/self.koff*self.compartment.value(self.species)

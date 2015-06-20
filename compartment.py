@@ -20,7 +20,7 @@ class Compartment(object):
         diffusivities ([double]): Values in m^2/s
 
     """
-    def __init__(self,name):
+    def __init__(self,name=None,minvolume = 0.05,maxvolume = 0.9):
         self.name = name
         self.species = set()
         self.values = {}
@@ -32,6 +32,8 @@ class Compartment(object):
         self.system_state_offset = 0
         self.species_internal_lookup = {}
         self.N = 1
+        self.minvolume = minvolume
+        self.maxvolume = maxvolume
 
     def __str__(self):
         return self.name
