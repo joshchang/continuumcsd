@@ -139,6 +139,7 @@ class CSDModel(object):
         for membrane in self.membranes:
             for channel in membrane.channels:
                 channel.N = self.N
+                channel.vectorizevalues()
                 # Register internal variables for the channels involved
                 channeltmp = channel.getInternalVars()
                 if channeltmp is not None:

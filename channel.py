@@ -13,6 +13,9 @@ from species import *
 import numpy as np
 import math
 
+def scalar_mult_dict(dictionary, scalar):
+    return { key: scalar*value for key,value in dictionary.items()}
+
 class Channel(object):
     system_state_offset = 0
     N = 1
@@ -53,6 +56,9 @@ class Channel(object):
     def getInternalVars(self): return None
 
     def setInternalVars(self,system_state): return None
+
+    def vectorizevalues(self):
+        pass
 
 
 class GHKChannel(Channel):
@@ -274,6 +280,12 @@ class GHKChannel(Channel):
         V_m = self.membrane.phi(system_state)
         self.m = self.minfy(V_m)
         self.h = self.hinfty(V_m)
+
+    def vectorizevalues(self):
+        if not hasattr(self.m,'__iter__') and self.m is not None:
+            self.m = np.ones(self.N)*self.m
+        if not hasattr(self.h,'__iter__') and self.h is not None:
+            self.h = np.ones(self.N)*self.h
 
     # Internal vars for the standard GHK equation are the gating variables
     # [p, q]

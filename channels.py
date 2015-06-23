@@ -13,6 +13,7 @@ from species import *
 import numpy as np
 import math
 from channel import *
+import collections
 
 
 
@@ -43,7 +44,7 @@ class NaCaExchangePump(Pump):
         Nai = invalues[Na]
         '''
         # We want to do this, but it is SUPER SLOW!!!
-        if hasattr(Nai,'__iter__'):
+        if isinstance(Nai, collections.Sequence):
             # Prevent overflows
             I = np.fromiter([(power(nai/nae,3)*(cae/cai)*exp(vm/phi)-2.5)/(1+power(.0875/nae,3)) \
                 /(cae/cai+1.38e-3/cai)/(exp(0.65*vm/phi)+0.1) \
@@ -150,8 +151,9 @@ class KIRChannel(Channel):
         V_m = self.membrane.phi(system_state)
         invalues = self.membrane.inside.get_val_dict(system_state)
         outvalues = self.membrane.outside.get_val_dict(system_state)
-        return {K:1.0*self.gmax* (V_m-phi/K.z*(np.log(outvalues[K])-np.log(invalues[K]))) \
-            /(sqrt(outvalues[K])*(1.0+exp(V_m+0.01+0.08 )))  }
+        Ek = phi/K.z*(np.log(outvalues[K])-np.log(invalues[K]))
+        return {K:1.0*self.gmax* (V_m-Ek) \
+            /(sqrt(outvalues[K]*1e3)*(1.0+exp(1000*(V_m-Ek) )))  }
 
     def current_infty(self,V_m):
         return self.current(V_m)
@@ -178,7 +180,7 @@ class KAChannel(GHKChannel):
 class NMDAChannel(GHKChannel):
     p = 1
     q = 1
-    r = 1
+    #name = 'GLutamate-independent NMDA channel'
     species = [Na, K, Ca]
     gmax = np.array([2,2,20])*1e-9
 
@@ -193,6 +195,47 @@ class NMDAChannel(GHKChannel):
 
     def betah(self, V_m):
         return 5e-4 - self.alphah(V_m)
+
+
+class gNMDAChannel(NMDAChannel):
+    """
+    Glutamate-dependent NMDA Channel
+    """
+    r1 = 0.072
+    r2 = 6.6
+    Popen = 0
+    #name = 'Glutamate-dependent NMDA Channel'
+
+    def get_dot_InternalVars(self,system_state,t):
+        # Glutamate gating variable
+        old = super(NMDAChannel, self).get_dot_InternalVars(system_state,t)
+        Popen = self.get_Popen(system_state)
+        g = self.membrane.outside.value(Glu,system_state)
+        dotPopen = self.r1*g*(1.0-Popen) - self.r2*Popen
+        return np.concatenate([old,dotPopen])
+
+    def get_Popen(self,system_state=None):
+        if system_state is None:
+            return self.Popen
+        return system_state[self.system_state_offset+2*self.N:self.system_state_offset+3*self.N]
+
+    def getInternalVars(self):
+        old = super(NMDAChannel,self).getInternalVars()
+        Popen = self.get_Popen()
+        return np.concatenate([old,Popen])
+
+    def setInternalVars(self,system_state):
+        super(NMDAChannel,self).setInternalVars(system_state)
+        self.Popen = self.get_Popen(system_state)
+
+    def current(self,V_m=None,system_state=None):
+        old = super(NMDAChannel,self).current(system_state) # this is a dict
+        return scalar_mult_dict(old,self.get_Popen(system_state))
+
+    def vectorizevalues(self):
+        super(NMDAChannel,self).vectorizevalues()
+        if self.Popen is not None and not isinstance(self.Popen, collections.Sequence):
+            self.Popen = np.ones(self.N)*self.Popen
 
 class KDRglialChannel(GHKChannel):
     p = 4
