@@ -139,6 +139,7 @@ class CSDModel(object):
         for membrane in self.membranes:
             for channel in membrane.channels:
                 channel.N = self.N
+                channel.vectorizevalues()
                 # Register internal variables for the channels involved
                 channeltmp = channel.getInternalVars()
                 if channeltmp is not None:
@@ -166,6 +167,7 @@ class CSDModel(object):
         for compartment in self.compartments:
             for reaction in compartment.reactions:
                 tmp = reaction.getInternalVars()
+                reaction.N = self.N
                 if tmp is not None:
                     self.internalVars.extend([ (reaction, len(tmp),index)])
                     reaction.system_state_offset = index
@@ -174,6 +176,7 @@ class CSDModel(object):
 
         for key, val in self.volfrac.items():
             self.volfrac[key] = val*np.ones(self.N)
+
 
         self._N_internal_object = sum ([item[1] for item in self.internalVars])
         self._N_volumefraction = (len(self.compartments)-1)*self.N

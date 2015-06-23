@@ -81,12 +81,25 @@ class CSDModelInterval(CSDModel):
                 compartmentfluxes[key.outside].update(flux)
                 compartmentfluxes[key.inside].update(scalar_mult_dict(flux, -1.0))
                 wf = key.waterFlow(system_state)
-                condition = (volumefractions[key.outside]<0.95)*(volumefractions[key.inside]<0.95) \
-                    *(volumefractions[key.outside]>0.05)*(volumefractions[key.outside]>0.05)
-                waterflows[key.outside] += wf*condition
-                waterflows[key.inside] -= wf*condition
+                # No waterflow into compartment if it is too full
+                # No waterflow out of compartment if it is too empty
+                condition1 = (volumefractions[key.outside]<=key.outside.minvolume)
+                condition2 = (volumefractions[key.outside]>=key.outside.maxvolume)
+                condition3 = (volumefractions[key.inside]<=key.inside.minvolume)
+                condition4 = (volumefractions[key.inside]>=key.inside.maxvolume)
+                condition = wf > 0
+                waterflows[key.outside] += condition1*condition4*condition*wf + condition2*condition3*(1-condition)*wf
+                waterflows[key.inside] -= condition1*condition4*condition*wf - condition1*condition3*(1-condition)*wf
+
+            elif type(key) is Reaction:
+                flux = key.flux(system_state)
+                compartmentfluxes[key.compartment].update(flux)
+
             elif type(key) is not Compartment and type(key) is not CellCompartment:
-                temp[index:(index + length)] = key.get_dot_InternalVars(system_state, t)
+                try:
+                    temp[index:(index + length)] = key.get_dot_InternalVars(system_state, t)
+                except:
+                    print key.name
 
 
         for (key, length, index) in self.internalVars:
