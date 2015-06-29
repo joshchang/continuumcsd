@@ -220,7 +220,7 @@ class Membrane(Coupling):
         inside_t = self.inside.tonicity(system_state)
         outside_t = self.outside.tonicity(system_state)
 
-        totalpermeability = sum([channel.water_permeability(system_state) for channel in self.channels])
+        totalpermeability = sum([channel.water_permeability(system_state)*self.channeldensity[channel] for channel in self.channels])
         return totalpermeability*(inside_t-outside_t)  # flow from in to out
 
     def currents_and_fluxes(self, system_state = None):

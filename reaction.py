@@ -30,7 +30,7 @@ class Buffer(Reaction):
     """
     species = [Ca]
     def __init__(self,species, capacity, kon, koff):
-        self.capacity = capacity # concentration capacity
+        self.capacity = capacity # concentration capacity (per cell)
         self.kon = kon
         self.koff = koff
         self.species.add(species)
