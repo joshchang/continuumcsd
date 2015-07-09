@@ -86,7 +86,7 @@ class NaPChannel(GHKChannel):
     species = [Na]
     p = 2
     q = 1
-    gmax = 2e-9
+    gmax = np.array([2e-9])
     def alpham(self, V_m):
         return pow(6.0*(1+exp(-(143*V_m+5.67))),-1)
 

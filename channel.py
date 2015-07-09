@@ -38,6 +38,8 @@ class Channel(object):
         Water permeability of channel as a function of V_m
         Units of permeability are L/Molarity/s for each single channel
         """
+        if self.N>1:
+            return np.zeros(self.N)
         return 0.0
 
     def current_infty(self,system_state = None):
