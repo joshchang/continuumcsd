@@ -23,7 +23,7 @@ class Pump(Channel):
 
 class NaKATPasePump(Pump):
     species = [K,Na]
-    gmax = np.array([-2.0,3.0])*2e-6  #2K per 3Na
+    gmax = np.array([-2.0,3.0])*2e-11  #2K per 3Na
     def current(self,system_state = None):
         invalues = self.membrane.inside.get_val_dict(system_state)
         outvalues = self.membrane.outside.get_val_dict(system_state)
@@ -33,7 +33,7 @@ class NaKATPasePump(Pump):
 class NaCaExchangePump(Pump):
     # taken from Bennett et al.
     species = [Na,Ca]
-    gmax = np.array([-3,1])*2e-7
+    gmax = np.array([-3,1])*2e-11
     def current(self,system_state=None):
         V_m = self.membrane.phi(system_state)
         invalues = self.membrane.inside.get_val_dict(system_state)
@@ -86,7 +86,7 @@ class NaPChannel(GHKChannel):
     species = [Na]
     p = 2
     q = 1
-    gmax = np.array([2e-9])
+    gmax = np.array([2e-11])
     def alpham(self, V_m):
         return pow(6.0*(1+exp(-(143*V_m+5.67))),-1)
 
@@ -103,7 +103,7 @@ class NaTChannel(GHKChannel):
     species = [Na]
     p = 3
     q = 1
-    gmax = np.array([2e-9])
+    gmax = np.array([3e-11])
     def alpham(self, V_m):
         return 0.32*(V_m+51.9e-3)/(1.0-exp(-(250*V_m+12.975)))
 
@@ -120,7 +120,7 @@ class KDRChannel(GHKChannel):
     species = [K]
     p = 2
     q = 0
-    gmax = np.array([1.75e-9])
+    gmax = np.array([1.75e-11])
     def alpham(self, V_m):
         return 16.0*(V_m+34.9e-3)/(1.0-exp(-(200*V_m+6.98)))
     def betam(self, V_m):
@@ -128,7 +128,7 @@ class KDRChannel(GHKChannel):
 
 
 class NonSpecificChlorideChannel(Channel):
-    gmax = 2e-9
+    gmax = 2e-11
     species = [Cl]
     V_m = -0.07
     def __init__(self,V_m=None):
@@ -146,14 +146,15 @@ class NonSpecificChlorideChannel(Channel):
 
 class KIRChannel(Channel):
     species = [K]
-    gmax = 2.0e-9
+    gmax = 2.0e-11
     def current(self,system_state=None):
         V_m = self.membrane.phi(system_state)
         invalues = self.membrane.inside.get_val_dict(system_state)
         outvalues = self.membrane.outside.get_val_dict(system_state)
         Ek = phi/K.z*(np.log(outvalues[K])-np.log(invalues[K]))
-        return {K:1.0*self.gmax* (V_m-Ek) \
-            /(sqrt(outvalues[K]*1e3)*(1.0+exp(1000*(V_m-Ek) )))  }
+        return {K:(V_m<Ek)*1.0*self.gmax* (V_m-Ek) \
+            /(sqrt(outvalues[K]*1e3)*(1.0+exp(1000*(V_m-Ek) ))) + (V_m>=Ek)*1.0*self.gmax* (V_m-Ek)*exp(-1000*(V_m-Ek) ) \
+            /(sqrt(outvalues[K]*1e3)*(1.0+exp(-1000*(V_m-Ek) )))  }
 
     def current_infty(self,V_m):
         return self.current(V_m)
@@ -161,7 +162,7 @@ class KIRChannel(Channel):
 
 class KAChannel(GHKChannel):
     species = [K]
-    gmax = np.array([2.5e-9]) # Siemens
+    gmax = np.array([2.5e-11]) # Siemens
     p =2
     q =1
     def alpham(self,V_m):
@@ -182,7 +183,7 @@ class NMDAChannel(GHKChannel):
     q = 1
     #name = 'GLutamate-independent NMDA channel'
     species = [Na, K, Ca]
-    gmax = np.array([2,2,20])*1e-9
+    gmax = np.array([2,2,20])*1e-11
 
     def alpham(self,V_m):
         return 0.5/(1+exp( (13.5e-3-self.membrane.outside.value(K))/1.42e-3))
@@ -241,7 +242,7 @@ class KDRglialChannel(GHKChannel):
     p = 4
     q = 0
     species = [K]
-    gmax = [2e-9]
+    gmax = [2e-11]
 
     def alpham(self,V_m):
         scaletaun = 1.5
