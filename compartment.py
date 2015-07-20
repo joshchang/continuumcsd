@@ -214,3 +214,11 @@ class CellCompartment(Compartment):
     def __init__(self,name,density):
         super(self.__class__,self).__init__(name)
         self.density = density #number of these compartments per unit volume (SI units)
+
+    def volume(self,system_state):
+        '''
+
+        :param system_state: The entire system state as a numpy vector
+        :return: the volume of this cell compartment on a per-cell basis
+        '''
+        return 0

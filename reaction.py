@@ -17,6 +17,7 @@ class Reaction(object):
     species = ()
     system_state_offset = 0
     state = None
+    compartment = None
     N = 1
     def __init__(self,name):
         pass

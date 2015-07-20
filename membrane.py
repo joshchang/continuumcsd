@@ -252,4 +252,6 @@ class Membrane(Coupling):
     def set_phi(self,phi_m): self.phi_m = phi_m
 
     def phi_ion(self, species, system_state=None):
-        return phi/species.z*(np.log(self.outside.value(species,system_state))-np.log(self.inside.value(species,system_state)))
+        Ce = self.outside.value(species,system_state)
+        Ci = self.inside.value(species,system_state)
+        return phi/species.z*(np.log(Ce)-np.log(Ci))

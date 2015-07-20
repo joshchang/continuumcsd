@@ -327,14 +327,22 @@ class CSDModel(object):
     def __str__(self):
         return self.y
 
-    def setBoundaryConditions(self,bcs):
+    def setBoundaryConditions(self,bcs): #@TODO
         self.bcs = bcs
 
-    def sanity(self,system_state=None):
+    def sanity(self,system_state=None): #@TODO
         """
         Make sure the system is still physical
         All concentrations are non-negative
         All potentials are not NaN
         """
         return True
+
+    def getInternalDict(self,system_state): #@TODO
+        '''
+        Returns a dictionary of the system variables referenced by name
+        :param system_state:
+        :return:
+        '''
+        pass
 
