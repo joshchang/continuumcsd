@@ -155,44 +155,30 @@ class Membrane(Coupling):
         # Compute first ion-specific terms for GHK
 
         # Compute ghkcurrents
-        '''
-        # SUPER SLOW!!!
-        if hasattr(V_m,'__iter__'):
-            
-            ghkcurrents = { species: F*V_m*species.z/phi*np.fromiter( [ (cin-exp(-vm*species.z/phi)*cout)/(1.0-exp(-vm*species.z/phi)) \
-                if vm*species.z>0 else  \
-                (cin*exp(vm*species.z/phi)-cout)/(exp(vm*species.z/phi)-1.0)
-                for (vm,cin,cout) in zip(V_m,self.inside.value(species,system_state),self.outside.value(species,system_state)) ], np.float64)\
-                for species in self.species}
-            #ghkcurrents = {species: F*V_m*species.z/phi*(cin*exp(vm*species.z/phi)-cout)/(exp(vm*species.z/phi)-1.0) } \
-        else:
-            ghkcurrents = {species: F*V_m*species.z/phi*(self.inside.value(species,system_state)*exp(V_m*species.z/phi)-self.outside.value(species,system_state))/(exp(V_m*species.z/phi)-1.0) \
-                for species in self.species}
-        
-        ghkcurrents = {species: F*V_m*species.z/phi*(self.inside.value(species,system_state)*exp(V_m*species.z/phi)-self.outside.value(species,system_state))/(exp(V_m*species.z/phi)-1.0) \
-            for species in self.species}
-        
-        '''
-        # Test numpy ternary expression instead, maybe it can be pretty fast??
-        
+        #''' # using np.where
         ghkcurrents = {species: np.where( V_m*species.z<0, F*V_m*species.z/phi*(self.inside.value(species,system_state)*exp(V_m*species.z/phi)-self.outside.value(species,system_state))/(exp(V_m*species.z/phi)-1.0), 
             F*V_m*species.z/phi*(self.inside.value(species,system_state)-self.outside.value(species,system_state)*exp(-V_m*species.z/phi))/(1.0-exp(-V_m*species.z/phi))) \
             for species in self.species}
-        
+        #'''
+
+        # let's try a for loop instead
+        '''
+        ghkcurrents = {species: np.zeros(self.N) for species in self.species}
+        for species in self.species:
+            if self.N>1:
+                condition = V_m*species.z<0
+                ghkcurrents[species][condition] = F*V_m[condition]*species.z/phi*(self.inside.value(species,system_state)[condition]*exp(V_m[condition]*species.z/phi)-self.outside.value(species,system_state)[condition])/(exp(V_m[condition]*species.z/phi)-1.0)
+                ghkcurrents[species][~condition] = F*V_m[~condition]*species.z/phi*(self.inside.value(species,system_state)[~condition]-self.outside.value(species,system_state)[~condition]*exp(-V_m[~condition]*species.z/phi))/(1.0-exp(-V_m[~condition]*species.z/phi))
+            else:
+                ghkcurrents[species] = F*V_m*species.z/phi*(self.inside.value(species,system_state)*exp(V_m*species.z/phi)-self.outside.value(species,system_state) )/(exp(V_m*species.z/phi)-1.0)
+
+        '''
         channelcurrents = []
         for channel in self.channels:
             if issubclass(type(channel),GHKChannel):
                 channelcurrents.append( dictmult(channel.conductance(system_state), scalar_mult_dict(ghkcurrents,self.channeldensity[channel])))
             else:
                 channelcurrents.append(scalar_mult_dict(channel.current( system_state),self.channeldensity[channel]))
-        # GHK
-        '''
-        # Slower than the for loop
-        channelcurrents = [dictmult(channel.conductance(system_state), scalar_mult_dict(ghkcurrents,self.channeldensity[channel])) \
-            if issubclass(type(channel),GHKChannel) else scalar_mult_dict(channel.current( system_state),self.channeldensity[channel]) \
-            for channel in self.channels]
-        '''
-        
         
         counter = collections.Counter()
         

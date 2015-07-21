@@ -1,3 +1,6 @@
+__author__ = 'Josh Chang'
+__email__ = 'joshchang@ucla.edu'
+
 from numpy import sum, exp, sqrt, log
 from params import *
 from channels import *

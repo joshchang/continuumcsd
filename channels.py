@@ -170,15 +170,7 @@ class KIRChannel(Channel):
         Ki = invalues[K]
         Ek = phi / K.z * (np.log(Ke) - np.log(Ki))
 
-        return {K: self.gmax*(V_m-Ek)/sqrt(Ke*1e3)/(1.0+exp(1000*(V_m-Ek)))}
-
-        '''
-        return {K: (V_m < Ek) * 1.0 * self.gmax * (V_m - Ek) \
-                   / (sqrt(outvalues[K] * 1e3) * (1.0 + exp(1000 * (V_m - Ek)))) + (V_m >= Ek) * 1.0 * self.gmax * (
-        V_m - Ek) * exp(-1000 * (V_m - Ek)) \
-                                                                                   / (sqrt(outvalues[K] * 1e3) * (
-        1.0 + exp(-1000 * (V_m - Ek))))}
-        '''
+        return {K: self.gmax*(V_m-Ek)/sqrt(Ke*1e3)/np.where( V_m<Ek, (1.0+exp(1000*(V_m-Ek))), (1.0+exp(-1000*(V_m-Ek)))/ exp(-1000*(V_m-Ek)))}
 
     def current_infty(self, V_m):
         return self.current(V_m)
