@@ -17,10 +17,15 @@ Import other libraries, including dolfin.
 from collections import Counter
 import itertools
 from scipy.integrate import ode
+import numpy as np
 
 def scalar_mult_dict(dictionary, scalar):
     return { key: scalar*value for key,value in dictionary.items()}
 
+try:
+    xrange
+except NameError:
+    xrange = range
 
 class CSDModel(object):
     def __init__(self, N):
@@ -186,7 +191,9 @@ class CSDModel(object):
         """
         self.t = 0.0
         self.odesolver = ode(self.ode_rhs) #
-        self.odesolver.set_integrator('lsoda', nsteps=3000, first_step=1e-6, max_step=5e-3 )
+        self.odesolver.set_integrator('lsoda', first_step=1e-5, max_step = 5e-3)
+        #self.odesolver.set_integrator('lsoda', nsteps=3000, first_step=1e-6, max_step=5e-3 )
+
         self.odesolver.set_initial_value(self.getInternalVars(),self.t)
 
 
@@ -312,7 +319,7 @@ class CSDModel(object):
             return self.volfrac
         for j in xrange(self.numcompartments-1):
             vfrac[self.compartments[j]] = system_state[(self._N_internal_object+j*self.N):(self._N_internal_object+(j+1)*self.N)]
-        totalfrac = sum(vfrac.values(),axis = 0)
+        totalfrac = np.sum(list(vfrac.values()),axis = 0)
         vfrac[self.compartments[self.numcompartments-1]]= 1.0-totalfrac
         return vfrac
 

@@ -16,7 +16,7 @@ import collections
 
 
 class Pump(Channel):
-    def current(self, system_state=None):
+    def current(self, system_state=None, invalues = None, outvalues = None):
         pass
 
 
@@ -24,10 +24,11 @@ class NaKATPasePump(Pump):
     species = [K, Na]
     gmax = np.array([-2.0, 3.0]) * 2e-9  # 2K per 3Na
 
-    def current(self, system_state=None):
-        invalues = self.membrane.inside.get_val_dict(system_state)
-        outvalues = self.membrane.outside.get_val_dict(system_state)
-        I = power(1.0 + 3.5e-3 / outvalues[K], -2) * power(1.0 + 0.014 / invalues[Na], -3)
+    def current(self, system_state=None, invalues=None, outvalues=None):
+        Ke = self.membrane.outside.value(K,system_state) if outvalues is None else outvalues[K]
+        Nai = self.membrane.outside.value(Na,system_state) if invalues is None else invalues[Na]
+
+        I = power(1.0 + 3.5e-3 / Ke, -2) * power(1.0 + 0.014 / Nai, -3)
         return {ion: I * gmax for ion, gmax in zip(self.species, self.gmax)}
 
 
@@ -36,14 +37,20 @@ class NaCaExchangePump(Pump):
     species = [Na, Ca]
     gmax = np.array([-3, 1]) * 2e-11
 
-    def current(self, system_state=None):
+    def current(self, system_state=None, invalues=None, outvalues=None):
         V_m = self.membrane.phi(system_state)
-        invalues = self.membrane.inside.get_val_dict(system_state)
-        outvalues = self.membrane.outside.get_val_dict(system_state)
-        Cae = outvalues[Ca]
-        Cai = invalues[Ca]
-        Nae = outvalues[Na]
-        Nai = invalues[Na]
+        if invalues is None:
+            Cai = self.membrane.inside.value(Ca,system_state)
+            Nai = self.membrane.inside.value(Na,system_state)
+        else:
+            Cai = invalues[Ca]
+            Nai = invalues[Na]
+        if outvalues is None:
+            Cae = self.membrane.outside.value(Ca,system_state)
+            Nae = self.membrane.outside.value(Na,system_state)
+        else:
+            Cae = outvalues[Ca]
+            Nae = outvalues[Na]
         '''
         # We want to do this, but it is SUPER SLOW!!!
         if isinstance(Nai, collections.Sequence):
@@ -63,10 +70,9 @@ class NaCaExchangePump(Pump):
 
         # Maybe this is faster??
 
-        I = (V_m < 0) * (power(Nai / Nae, 3) * (Cae / Cai) * exp(V_m / phi) - 2.5) / (1 + power(.0875 / Nae, 3)) / (
-        Cae / Cai + 1.38e-3 / Cai) / (exp(0.65 * V_m / phi) + 0.1) + \
-            (V_m >= 0) * (power(Nai / Nae, 3) * (Cae / Cai) - 2.5 * exp(-V_m / phi)) / (1 + power(.0875 / Nae, 3)) / (
-            Cae / Cai + 1.38e-3 / Cai) / (exp(-0.35 * V_m / phi) + 0.1 * exp(-V_m / phi))
+        I = np.where(V_m<0, (power(Nai / Nae, 3) * (Cae / Cai) * exp(V_m / phi) - 2.5) / (1 + power(.0875 / Nae, 3)) / (
+        Cae / Cai + 1.38e-3 / Cai) / (exp(0.65 * V_m / phi) + 0.1) ,  (power(Nai / Nae, 3) * (Cae / Cai) - 2.5 * exp(-V_m / phi)) / (1 + power(.0875 / Nae, 3)) / (
+            Cae / Cai + 1.38e-3 / Cai) / (exp(-0.35 * V_m / phi) + 0.1 * exp(-V_m / phi)))
 
         """
         I = np.where(V_m<0, (power(Nai/Nae,3)*(Cae/Cai)*exp(V_m/phi)-2.5)/(1+power(.0875/Nae,3))/(Cae/Cai+1.38e-3/Cai)/(exp(0.65*V_m/phi)+0.1), # First line runs if <0
@@ -77,13 +83,12 @@ class NaCaExchangePump(Pump):
 
 class PMCAPump(Pump):
     species = [Ca]
-    gmax = 1e-5
+    gmax = 1e-5 #@TODO Figure out this parameter!!
 
     def current(self, V_m=None, invalues=None, outvalues=None):
         h = 1.0
         KPMCA = 1e-6
         if invalues is None: invalues = self.membrane.inside.values
-        if outvalues is None: outvalues = self.membrane.outside.values
         Cai = invalues[Ca]
         return {Ca: self.gmax / (1 + power(KPMCA / Cai, h))}
 
@@ -92,7 +97,7 @@ class NaPChannel(GHKChannel):
     species = [Na]
     p = 2
     q = 1
-    gmax = np.array([2e-11])
+    gmax = np.array([3e-11])
 
     def alpham(self, V_m):
         return pow(6.0 * (1 + exp(-(143 * V_m + 5.67))), -1)
@@ -162,15 +167,15 @@ class KIRChannel(Channel):
     species = [K]
     gmax = 2.0e-11
 
-    def current(self, system_state=None):
+    def current(self, system_state=None, invalues=None, outvalues=None):
         V_m = self.membrane.phi(system_state)
         invalues = self.membrane.inside.get_val_dict(system_state)
         outvalues = self.membrane.outside.get_val_dict(system_state)
         Ke = outvalues[K]
         Ki = invalues[K]
-        Ek = phi / K.z * (np.log(Ke) - np.log(Ki))
+        E_K = phi / K.z * (np.log(Ke) - np.log(Ki))
 
-        return {K: self.gmax*(V_m-Ek)/sqrt(Ke*1e3)/np.where( V_m<Ek, (1.0+exp(1000*(V_m-Ek))), (1.0+exp(-1000*(V_m-Ek)))/ exp(-1000*(V_m-Ek)))}
+        return {K: self.gmax*(V_m-E_K)/sqrt(Ke*1e3)/np.where( V_m<E_K, (1.0+exp(1000*(V_m-E_K))), (1.0+exp(-1000*(V_m-E_K)))/ exp(-1000*(V_m-E_K)))}
 
     def current_infty(self, V_m):
         return self.current(V_m)
@@ -271,6 +276,11 @@ class KDRglialChannel(GHKChannel):
         scaletaun = 1.5
         shiftn = 0.05
         return scaletaun * 0.25 * exp((.02 - V_m - 0.07) / 0.04)
+
+class CaL(GHKChannel):
+    species = [Ca]
+    gmax = 2e-11
+
 
 
 class HoleChannel(Channel):

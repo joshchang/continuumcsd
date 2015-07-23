@@ -66,13 +66,13 @@ class Channel(object):
 class GHKChannel(Channel):
     m = 0.0
     h = 1.0
-    def current(self, system_state = None):
+    def current(self, system_state = None, invalues=None, outvalues=None):
         V_m = self.membrane.phi(system_state)
         h = self.get_h(system_state)
         m = self.get_m(system_state)
-        invalues = self.membrane.inside.get_val_dict(system_state)
-        outvalues = self.membrane.outside.get_val_dict(system_state)
-        print "calling GHKcurrent, want GHK conductance call instead!!"
+        if invalues is None: invalues = self.membrane.inside.get_val_dict(system_state)
+        if outvalues is None: outvalues = self.membrane.outside.get_val_dict(system_state)
+        print("calling GHKcurrent, want GHK conductance call instead!!")
         gating = power(m,self.p)*power(h,self.q)*F*species.z*V_m/phi
 
         #For safety, but SLOW!!!
@@ -97,9 +97,9 @@ class GHKChannel(Channel):
             insidestuff = vm*species.z/phi
             condition = (insidestuff>0)
             I = [
-                gmax*gating*(condition*(invalues[species]-exp(-insidestuff)*outvalues[species])/(1.0-exp(-insidestuff)) +\
-                (condition-1)*(invalues[species]*exp(insidestuff)-outvalues[species])/(exp(insidestuff)-1.0)) \
-                for gmax, species in zip(self.gmax, self.species)
+                gmax*gating*((invalues[species]-exp(-vm*species.z/phi)*outvalues[species])/(1.0-exp(-vm*species.z/phi)) if species.z<0 else \
+                    (invalues[species]*exp(vm*species.z/phi)-outvalues[species])/(exp(vm*species.z/phi)-1.0)) \
+                    for gmax, species in zip(self.gmax, self.species)
             ]
 
 
@@ -135,12 +135,12 @@ class GHKChannel(Channel):
             return self.minfty(V_m)
         return system_state[self.system_state_offset:self.system_state_offset+self.N]
 
-    def conductance(self, system_state = None):
+    def conductance(self, system_state = None, invalues=None, outvalues=None):
         V_m = self.membrane.phi(system_state)
         h = self.get_h(system_state)
         m = self.get_m(system_state)
-        invalues = self.membrane.inside.get_val_dict(system_state)
-        outvalues = self.membrane.outside.get_val_dict(system_state)
+        #if invalues is None: invalues = self.membrane.inside.get_val_dict(system_state)
+        #if outvlaues is None: outvalues = self.membrane.outside.get_val_dict(system_state)
         gate = power(m,self.p)*power(h,self.q)
         return {ion: gmax*gate for gmax,ion in zip(self.gmax,self.species)}
 
@@ -341,13 +341,12 @@ class LeakChannel(HHChannel):
         self.gmax = 0 # reset this to balance the specific ion current
         self.species = species # only a single species
 
-    def current(self,system_state = None):
+    def current(self,system_state = None, invalues = None, outvalues = None):
         V_m = self.membrane.phi(system_state)
-        invalues = self.membrane.inside.get_val_dict(system_state)
-        outvalues = self.membrane.outside.get_val_dict(system_state)
-        species = self.species
+        Ce = self.membrane.outside.value(self.species,system_state) if invalues is None else invalues[self.species]
+        Ci = self.membrane.inside.value(self.species,system_state) if outvalues is None else outvalues[self.species]
 
-        return {species: self.gmax*(V_m-phi/species.z*(np.log(outvalues[species])-np.log(invalues[species])))}
+        return {self.species: self.gmax*(V_m-phi/self.species.z*(np.log(Ce)-np.log(Ci)))}
 
     def set_gmax(self,gmax):
         self.gmax = gmax

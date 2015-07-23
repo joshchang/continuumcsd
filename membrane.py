@@ -104,7 +104,7 @@ class Membrane(Coupling):
                 #print residual
                 gmax = -residual/(self.phi()-self.phi_ion(channel.species))/density
                 if channel.gmax<0:
-                    print "Not adding leak because it doesn't balance anything. Try adding a pump first"
+                    print("Not adding leak because it doesn't balance anything. Try adding a pump first")
                     return
                 channel.set_gmax(gmax)
 
@@ -134,7 +134,7 @@ class Membrane(Coupling):
                 gmax = 0.0
             else: gmax = -residual/(self.phi()-self.phi_ion(species))
             if gmax<0:
-                print "Adding a leak channel does nothing to balance " + str(species)
+                print("Adding a leak channel does nothing to balance " + str(species))
                 continue
             else:
                 print ("Ion: %s, g_leak: %8.2E" %(str(species),gmax))
@@ -155,28 +155,25 @@ class Membrane(Coupling):
         # Compute first ion-specific terms for GHK
 
         # Compute ghkcurrents
-        #''' # using np.where
+        ''' # using np.where
         ghkcurrents = {species: np.where( V_m*species.z<0, F*V_m*species.z/phi*(self.inside.value(species,system_state)*exp(V_m*species.z/phi)-self.outside.value(species,system_state))/(exp(V_m*species.z/phi)-1.0), 
             F*V_m*species.z/phi*(self.inside.value(species,system_state)-self.outside.value(species,system_state)*exp(-V_m*species.z/phi))/(1.0-exp(-V_m*species.z/phi))) \
             for species in self.species}
-        #'''
-
-        # let's try a for loop instead
         '''
-        ghkcurrents = {species: np.zeros(self.N) for species in self.species}
-        for species in self.species:
-            if self.N>1:
-                condition = V_m*species.z<0
-                ghkcurrents[species][condition] = F*V_m[condition]*species.z/phi*(self.inside.value(species,system_state)[condition]*exp(V_m[condition]*species.z/phi)-self.outside.value(species,system_state)[condition])/(exp(V_m[condition]*species.z/phi)-1.0)
-                ghkcurrents[species][~condition] = F*V_m[~condition]*species.z/phi*(self.inside.value(species,system_state)[~condition]-self.outside.value(species,system_state)[~condition]*exp(-V_m[~condition]*species.z/phi))/(1.0-exp(-V_m[~condition]*species.z/phi))
-            else:
-                ghkcurrents[species] = F*V_m*species.z/phi*(self.inside.value(species,system_state)*exp(V_m*species.z/phi)-self.outside.value(species,system_state) )/(exp(V_m*species.z/phi)-1.0)
 
-        '''
+        # take advantage of how V_m is pretty much always negative
+
+        ghkcurrents = {species:F*V_m*species.z/phi*(self.inside.value(species,system_state)*exp(V_m*species.z/phi)-self.outside.value(species,system_state))/(exp(V_m*species.z/phi)-1.0) if species.z>0 else
+                            F*V_m*species.z/phi*(self.inside.value(species,system_state)-self.outside.value(species,system_state)*exp(-V_m*species.z/phi))/(1.0-exp(-V_m*species.z/phi))
+                       for species in self.species}
+
+
         channelcurrents = []
+        invalues = self.inside.get_val_dict(system_state)
+        outvalues = self.outside.get_val_dict(system_state)
         for channel in self.channels:
             if issubclass(type(channel),GHKChannel):
-                channelcurrents.append( dictmult(channel.conductance(system_state), scalar_mult_dict(ghkcurrents,self.channeldensity[channel])))
+                channelcurrents.append( dictmult(channel.conductance(system_state=system_state,invalues = invalues, outvalues = outvalues), scalar_mult_dict(ghkcurrents,self.channeldensity[channel])))
             else:
                 channelcurrents.append(scalar_mult_dict(channel.current( system_state),self.channeldensity[channel]))
         

@@ -99,12 +99,14 @@ class CSDModelInterval(CSDModel):
                 try:
                     temp[index:(index + length)] = key.get_dot_InternalVars(system_state, t)
                 except:
-                    print key.name
+                    print(key.name)
 
 
         for (key, length, index) in self.internalVars:
             if type(key) is Compartment or type(key) is CellCompartment:
-                temp[index:(index + length)] = key.get_dot_InternalVars(system_state, compartmentfluxes[key],volumefractions[key],0.0, t, dx = self.dx)
+                temp[index:(index + length)] = key.get_dot_InternalVars(system_state=system_state \
+                        , fluxes=compartmentfluxes[key],volumefraction=volumefractions[key],dotvolumefraction=0.0,\
+                        t=t, dx = self.dx)
 
         # Also compute the fluxes and determine the changes in the concentrations
 

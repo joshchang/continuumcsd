@@ -101,10 +101,11 @@ class Compartment(object):
         The fluxes are already adjusted for the volume of the compartment
         """
         temp = np.zeros(sum([item[1] for item in self.internalVars]))
+        concentrations = self.get_val_dict(system_state)
 
         for (key,length,index) in self.internalVars:
             if type(key) is Species:
-                concentration = self.value(key,system_state)
+                concentration = concentrations[key]
                 sourceterm = fluxes[key]
                 volumeterm = dotvolumefraction*concentration
                 diffusionterm = 0
@@ -169,7 +170,7 @@ class Compartment(object):
 
     def tonicity(self,system_state=None):
         if system_state is None:
-            return np.sum(self.values.values(),axis = 0)
+            return np.sum(list(self.values.values()),axis = 0)
         else:
             return np.sum([self.value(species,system_state) for species in self.species],axis=0)
 
@@ -195,8 +196,8 @@ class Compartment(object):
         charge_deficit = np.float64(compartment.charge() - self.charge())
         tonicity_deficit = np.float64(compartment.tonicity() - self.tonicity())
         if tonicity_deficit<0.0:
-            print "Tonicity is too high in this compartment already to do anything"
-            print "Add some particles to " + compartment.name
+            print("Tonicity is too high in this compartment already to do anything")
+            print("Add some particles to " + compartment.name)
             return
         if abs(charge_deficit)>1e-20:
             self.addSpecies(Cation,np.float64((charge_deficit+tonicity_deficit)*0.5),0,"Cation")
