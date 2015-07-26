@@ -1,8 +1,8 @@
 from numpy import exp
 
 # SI UNITS!!
-R = 8.31e-3   # V C/ mol K
-F = 96.485 # C/mol
+R = 8.314   # V C/ mol K
+F = 96485 # C/mol
 T = 310 # K
 phi = R*T/F
 

@@ -2,7 +2,8 @@ from channels import *
 from compartment import *
 from reaction import *
 from species import *
-import collections
+from collections import defaultdict
+from itertools import chain
 import warnings
 import operator
 import numpy as np
@@ -162,9 +163,10 @@ class Membrane(Coupling):
         '''
 
         # take advantage of how V_m is pretty much always negative
+        # recall that phi = RT/F
 
-        ghkcurrents = {species:F*V_m*species.z/phi*(self.inside.value(species,system_state)*exp(V_m*species.z/phi)-self.outside.value(species,system_state))/(exp(V_m*species.z/phi)-1.0) if species.z>0 else
-                            F*V_m*species.z/phi*(self.inside.value(species,system_state)-self.outside.value(species,system_state)*exp(-V_m*species.z/phi))/(1.0-exp(-V_m*species.z/phi))
+        ghkcurrents = {species:F*species.z**2*V_m/phi*(self.inside.value(species,system_state)*exp(V_m*species.z/phi)-self.outside.value(species,system_state))/(exp(V_m*species.z/phi)-1.0) if species.z>0 else
+                            F*V_m*species.z**2/phi*(self.inside.value(species,system_state)-self.outside.value(species,system_state)*exp(-V_m*species.z/phi))/(1.0-exp(-V_m*species.z/phi))
                        for species in self.species}
 
 
@@ -176,21 +178,24 @@ class Membrane(Coupling):
                 channelcurrents.append( dictmult(channel.conductance(system_state=system_state,invalues = invalues, outvalues = outvalues), scalar_mult_dict(ghkcurrents,self.channeldensity[channel])))
             else:
                 channelcurrents.append(scalar_mult_dict(channel.current( system_state),self.channeldensity[channel]))
-        
+
         counter = collections.Counter()
         
         for d in channelcurrents:
             counter.update(d)
         return counter
+        '''
+        result = defaultdict(float)
+        for key, value in chain(*channelcurrents):
+            result[key] += value
+        return result
+        '''
+        #return dict(sum((collections.Counter(dict) for dict in channelcurrents), collections.Counter()))
 
     def fluxes(self, system_state = None):
         """ Compute the instantaneous fluxes through the membrane
         # These fluxes are per total volume and not yet adjusted for volume fraction
         """
-        V_m = self.phi(system_state)
-        invalues = self.inside.get_val_dict(system_state)
-        outvalues = self.outside.get_val_dict(system_state)
-        
         currents = self.currents(system_state=system_state)
         fluxes = {key: current/F/key.z*self.inside.density for key, current in currents.items() }
         return fluxes
@@ -214,11 +219,9 @@ class Membrane(Coupling):
 
         if system_state is not None:
             V_m = self.phi(system_state)
-            invalues = self.inside.get_val_dict(system_state)
-            outvalues = self.outside.get_val_dict(system_state)
 
         currents = self.currents(V_m=V_m, system_state=system_state)
-        fluxes = {key: current/F/key.z for key, current in currents.items() }
+        fluxes = {key: current/F/key.z*self.inside.density for key, current in currents.items() }
         return currents, fluxes
 
     def removeChannel(self,channel):

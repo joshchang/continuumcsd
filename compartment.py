@@ -71,6 +71,10 @@ class Compartment(object):
             +self.species_internal_lookup[species]+self.N]
 
     def get_val_dict(self,system_state=None):
+        """
+
+        :rtype : dict
+        """
         if system_state is None: return self.values
         # else, return corresponding entries in system_state
         return { species: system_state[self.system_state_offset\

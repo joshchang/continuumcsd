@@ -22,7 +22,7 @@ class Pump(Channel):
 
 class NaKATPasePump(Pump):
     species = [K, Na]
-    gmax = np.array([-2.0, 3.0]) * 2e-9  # 2K per 3Na
+    gmax = np.array([-2.0, 3.0]) * 2e-7  # 2K per 3Na
 
     def current(self, system_state=None, invalues=None, outvalues=None):
         Ke = self.membrane.outside.value(K,system_state) if outvalues is None else outvalues[K]
@@ -35,7 +35,7 @@ class NaKATPasePump(Pump):
 class NaCaExchangePump(Pump):
     # taken from Bennett et al.
     species = [Na, Ca]
-    gmax = np.array([-3, 1]) * 2e-11
+    gmax = np.array([-3, 1]) * 2e-9
 
     def current(self, system_state=None, invalues=None, outvalues=None):
         V_m = self.membrane.phi(system_state)
@@ -83,7 +83,7 @@ class NaCaExchangePump(Pump):
 
 class PMCAPump(Pump):
     species = [Ca]
-    gmax = 1e-5 #@TODO Figure out this parameter!!
+    gmax = 2e-7 #@TODO Figure out this parameter!!
 
     def current(self, V_m=None, invalues=None, outvalues=None):
         h = 1.0
@@ -132,6 +132,7 @@ class NaTChannel(GHKChannel):
 
 
 class KDRChannel(GHKChannel):
+    # https://senselab.med.yale.edu/ModelDB/ShowModel.cshtml?model=113446&file=%5cNEURON-2008b%5ckdr.mod
     species = [K]
     p = 2
     q = 0
@@ -277,11 +278,37 @@ class KDRglialChannel(GHKChannel):
         shiftn = 0.05
         return scaletaun * 0.25 * exp((.02 - V_m - 0.07) / 0.04)
 
-class CaL(GHKChannel):
+class CaLChannel(GHKChannel):
     species = [Ca]
+    gmax = [4e-11]
+    p = 1
+    q = 0
+    def alpham(self, V_m, system_state = None):
+        return .333333*15.69*(-1000*V_m-10+81.5)*exp((1000*V_m+10-81.5)/10.0)/(-exp((1000*V_m+10-81.5)/10.0)+1.0)
+    def betam(self, V_m, system_state = None):
+        return .333333*0.29/exp((1000*V_m+10)/10.86)
+
+class CaPChannel(GHKChannel):
+    species = [Ca]
+    gmax = [4e-11]
+    p = 1
+    q = 1
+    def alphah(self, V_m, system_state = None):
+        return 0.0015/(1+exp( (1000*V_m+29)/8))
+    def betah(self, V_m, system_state = None):
+        return 0.0055*exp((1000*V_m+23)/8)/(1+exp((1000*V_m+23)/8))
+    def alpham(self, V_m, system_state = None):
+        return 8.5*exp((1000*V_m-8)/12.5)/(1+exp((1000*V_m-8)/12.5))
+    def betam(self, V_m, system_state=None):
+        return 35.0/(1+exp((1000*V_m+74)/14.5))
+
+class KSKChannel(Channel):
+    # https://senselab.med.yale.edu/ModelDB/ShowModel.cshtml?model=113446&file=%5cNEURON-2008b%5csk.mod
     gmax = 2e-11
-
-
+    species = [K]
+    def current(self,V_m=None, system_state=None, invalues = None, outvalues = None):
+        Cai = self.membrane.inside.value(Ca,system_state) if invalues is None else invalues[Ca]
+        return {K: self.gmax/(1+power(3e-7/Cai,4.7) ) }
 
 class HoleChannel(Channel):
     def current(self, V_m=None, system_state=None):
