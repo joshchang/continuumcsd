@@ -3,12 +3,17 @@ from compartment import *
 from reaction import *
 from species import *
 from collections import defaultdict
+from customdict import *
 from itertools import chain
 import warnings
 import operator
 import numpy as np
 
 def scalar_mult_dict(dictionary, scalar):
+    """
+
+    :type scalar: scalar number
+    """
     return { key: scalar*value for key,value in dictionary.items()}
 
 def dictmult(dict1,dict2):
@@ -87,6 +92,11 @@ class Membrane(Coupling):
         return -totalcurrents/self.Cm, fluxes, currents
 
     def get_jacobian_InternalVars(self,system_state = None,t = None):
+        """
+        :param system_state:
+        :param t:
+        :return: Jacobian matrix, rectangular matrix
+        """
         pass
 
 
@@ -146,13 +156,15 @@ class Membrane(Coupling):
                 self.channels.extend([channel])
 
     def currents(self, system_state = None):
-        """ Compute the instantaneous total currents through the membrane
+        """ Compute the instantaneous total currents through the membrane for single cells
 
         Value:
             dict species: current
         """
         V_m = self.phi(system_state)
-        
+        invalues = self.inside.get_val_dict(system_state)
+        outvalues = self.outside.get_val_dict(system_state)
+
         # Compute first ion-specific terms for GHK
 
         # Compute ghkcurrents
@@ -165,32 +177,22 @@ class Membrane(Coupling):
         # take advantage of how V_m is pretty much always negative
         # recall that phi = RT/F
 
-        ghkcurrents = {species:F*species.z**2*V_m/phi*(self.inside.value(species,system_state)*exp(V_m*species.z/phi)-self.outside.value(species,system_state))/(exp(V_m*species.z/phi)-1.0) if species.z>0 else
-                            F*V_m*species.z**2/phi*(self.inside.value(species,system_state)-self.outside.value(species,system_state)*exp(-V_m*species.z/phi))/(1.0-exp(-V_m*species.z/phi))
+        ghkcurrents = {species:F*species.z**2*V_m/phi*(invalues[species]*exp(V_m*species.z/phi)-outvalues[species])/(exp(V_m*species.z/phi)-1.0) if species.z>0 else
+                            F*species.z**2*V_m/phi*(invalues[species]-outvalues[species]*exp(-V_m*species.z/phi))/(1.0-exp(-V_m*species.z/phi))
                        for species in self.species}
-
-
         channelcurrents = []
-        invalues = self.inside.get_val_dict(system_state)
-        outvalues = self.outside.get_val_dict(system_state)
         for channel in self.channels:
             if issubclass(type(channel),GHKChannel):
                 channelcurrents.append( dictmult(channel.conductance(system_state=system_state,invalues = invalues, outvalues = outvalues), scalar_mult_dict(ghkcurrents,self.channeldensity[channel])))
             else:
                 channelcurrents.append(scalar_mult_dict(channel.current( system_state),self.channeldensity[channel]))
 
-        counter = collections.Counter()
+        counter = customdict(float)
         
         for d in channelcurrents:
             counter.update(d)
         return counter
-        '''
-        result = defaultdict(float)
-        for key, value in chain(*channelcurrents):
-            result[key] += value
-        return result
-        '''
-        #return dict(sum((collections.Counter(dict) for dict in channelcurrents), collections.Counter()))
+
 
     def fluxes(self, system_state = None):
         """ Compute the instantaneous fluxes through the membrane
@@ -234,6 +236,9 @@ class Membrane(Coupling):
     def phi(self,system_state=None):
         if system_state is None: return self.phi_m;
         return system_state[self.system_state_offset:self.system_state_offset+self.N]
+
+    def phi_matrix(self,system_state):
+        return system_state[:,self.system_state_offset:self.system_state_offset+self.N]
 
     def set_phi(self,phi_m): self.phi_m = phi_m
 

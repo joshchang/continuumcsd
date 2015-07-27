@@ -15,7 +15,7 @@ from species import *
 """
 Import other libraries, including dolfin.
 """
-from collections import Counter
+from customdict import *
 import itertools
 from scipy.integrate import ode
 
@@ -62,15 +62,15 @@ class CSDModelInterval(CSDModel):
         return:
             ydot(numpy.ndarray)
             ordering: internal vars for each variable in self.internalVars
-        """
 
+        """
         temp = np.zeros(self._N_internal_object + self._N_volumefraction)
         """
         Loop through once to do necessary pre-computation. This code relies on the
         membranes coming first in self.internalVars for the model. Otherwise, the
         fluxes will all be zero!
         """
-        compartmentfluxes = {compartment: collections.Counter() for compartment in self.compartments}
+        compartmentfluxes = {compartment: customdict(float) for compartment in self.compartments}
         waterflows = {compartment: 0.0 for compartment in self.compartments}
         volumefractions = self.volumefractions(system_state)
         # the fluxes are now zero

@@ -195,9 +195,6 @@ class CSDModel(object):
         #self.odesolver.set_integrator('lsoda', nsteps=3000, first_step=1e-6, max_step=5e-3 )
 
         self.odesolver.set_initial_value(self.getInternalVars(),self.t)
-
-
-
         self.isAssembled = True
 
     def addMembrane(self,membrane):
