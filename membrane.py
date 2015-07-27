@@ -83,7 +83,7 @@ class Membrane(Coupling):
         invalues = self.inside.get_val_dict(system_state)
         outvalues = self.outside.get_val_dict(system_state)
 
-        currents = self.currents(system_state=system_state)
+        currents = self.currents(system_state=system_state, V_m = V_m, invalues = invalues, outvalues = outvalues)
         fluxes = {species: current/F/species.z for species, current in currents.items() }
 
         totalcurrents = np.sum(currents.values(),axis = 0)
@@ -155,15 +155,15 @@ class Membrane(Coupling):
                 self.channeldensity[channel] = 1.0
                 self.channels.extend([channel])
 
-    def currents(self, system_state = None):
+    def currents(self, system_state = None, V_m = None, invalues = None, outvalues = None):
         """ Compute the instantaneous total currents through the membrane for single cells
 
         Value:
             dict species: current
         """
-        V_m = self.phi(system_state)
-        invalues = self.inside.get_val_dict(system_state)
-        outvalues = self.outside.get_val_dict(system_state)
+        if V_m is None: V_m = self.phi(system_state)
+        if invalues is None: invalues = self.inside.get_val_dict(system_state)
+        if outvalues is None: outvalues = self.outside.get_val_dict(system_state)
 
         # Compute first ion-specific terms for GHK
 
@@ -180,17 +180,14 @@ class Membrane(Coupling):
         ghkcurrents = {species:F*species.z**2*V_m/phi*(invalues[species]*exp(V_m*species.z/phi)-outvalues[species])/(exp(V_m*species.z/phi)-1.0) if species.z>0 else
                             F*species.z**2*V_m/phi*(invalues[species]-outvalues[species]*exp(-V_m*species.z/phi))/(1.0-exp(-V_m*species.z/phi))
                        for species in self.species}
-        channelcurrents = []
+        counter = customdict(float)
+
         for channel in self.channels:
             if issubclass(type(channel),GHKChannel):
-                channelcurrents.append( dictmult(channel.conductance(system_state=system_state,invalues = invalues, outvalues = outvalues), scalar_mult_dict(ghkcurrents,self.channeldensity[channel])))
+                counter.update( dictmult(channel.conductance(system_state=system_state, V_m = V_m,invalues = invalues, outvalues = outvalues), scalar_mult_dict(ghkcurrents,self.channeldensity[channel])))
             else:
-                channelcurrents.append(scalar_mult_dict(channel.current( system_state),self.channeldensity[channel]))
+                counter.update(scalar_mult_dict(channel.current(system_state=system_state, V_m = V_m,invalues = invalues, outvalues = outvalues),self.channeldensity[channel]))
 
-        counter = customdict(float)
-        
-        for d in channelcurrents:
-            counter.update(d)
         return counter
 
 
@@ -202,15 +199,18 @@ class Membrane(Coupling):
         fluxes = {key: current/F/key.z*self.inside.density for key, current in currents.items() }
         return fluxes
 
-    def waterFlow(self,system_state = None):
+    def waterFlow(self,system_state = None, V_m = None, invalues = None, outvalues = None, tonicity = None):
         """
         Compute rate of water flow through the channel in units L/s
         """
 
-        inside_t = self.inside.tonicity(system_state)
-        outside_t = self.outside.tonicity(system_state)
-
         totalpermeability = sum([channel.water_permeability(system_state)*self.channeldensity[channel] for channel in self.channels])
+
+        if tonicity is not None: return totalpermeability*tonicity
+
+        inside_t = self.inside.tonicity(system_state, invalues)
+        outside_t = self.outside.tonicity(system_state, outvalues)
+
         return totalpermeability*(inside_t-outside_t)  # flow from in to out
 
     def currents_and_fluxes(self, system_state = None):

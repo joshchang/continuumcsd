@@ -16,7 +16,7 @@ import collections
 
 
 class Pump(Channel):
-    def current(self, system_state=None, invalues = None, outvalues = None):
+    def current(self, system_state=None, V_m = None, invalues = None, outvalues = None):
         pass
 
 
@@ -24,7 +24,7 @@ class NaKATPasePump(Pump):
     species = [K, Na]
     gmax = np.array([-2.0, 3.0]) * 2e-7  # 2K per 3Na
 
-    def current(self, system_state=None, invalues=None, outvalues=None):
+    def current(self, system_state=None, V_m=None, invalues=None, outvalues=None):
         Ke = self.membrane.outside.value(K,system_state) if outvalues is None else outvalues[K]
         Nai = self.membrane.outside.value(Na,system_state) if invalues is None else invalues[Na]
 
@@ -37,8 +37,8 @@ class NaCaExchangePump(Pump):
     species = [Na, Ca]
     gmax = np.array([-3, 1]) * 2e-9
 
-    def current(self, system_state=None, invalues=None, outvalues=None):
-        V_m = self.membrane.phi(system_state)
+    def current(self, system_state=None, V_m = None, invalues=None, outvalues=None):
+        if V_m is None: V_m = self.membrane.phi(system_state)
         if invalues is None:
             Cai = self.membrane.inside.value(Ca,system_state)
             Nai = self.membrane.inside.value(Na,system_state)
@@ -85,11 +85,10 @@ class PMCAPump(Pump):
     species = [Ca]
     gmax = 2e-7 #@TODO Figure out this parameter!!
 
-    def current(self, V_m=None, invalues=None, outvalues=None):
+    def current(self, system_state = None, V_m=None, invalues=None, outvalues=None):
         h = 1.0
         KPMCA = 1e-6
-        if invalues is None: invalues = self.membrane.inside.values
-        Cai = invalues[Ca]
+        Cai = invalues[Ca] if invalues is not None else self.membrane.inside.value(Ca,system_state)
         return {Ca: self.gmax / (1 + power(KPMCA / Cai, h))}
 
 
@@ -154,11 +153,11 @@ class NonSpecificChlorideChannel(Channel):
         if V_m is not None:
             self.V_m = V_m
 
-    def current(self, system_state=None):
-        V_m = self.membrane.phi(system_state)
-        invalues = self.membrane.inside.get_val_dict(system_state)
-        outvalues = self.membrane.outside.get_val_dict(system_state)
-        return {Cl: self.gmax * (V_m - phi / Cl.z * (np.log(outvalues[Cl]) - np.log(invalues[Cl])))}
+    def current(self, system_state=None, V_m = None, invalues = None, outvalues = None):
+        if V_m is None: V_m = self.membrane.phi(system_state)
+        Cli = invalues[Cl] if invalues is not None else self.membrane.inside.value(Cl,system_state)
+        Cle = outvalues[Cl] if outvalues is not None else self.membrane.outside.value(Cl,system_state)
+        return {Cl: self.gmax * (V_m - phi / Cl.z * (np.log(Cle) - np.log(Cli)))}
 
     def current_infty(self, V_m):
         return self.current(V_m)
@@ -168,12 +167,10 @@ class KIRChannel(Channel):
     species = [K]
     gmax = 2.0e-11
 
-    def current(self, system_state=None, invalues=None, outvalues=None):
-        V_m = self.membrane.phi(system_state)
-        invalues = self.membrane.inside.get_val_dict(system_state)
-        outvalues = self.membrane.outside.get_val_dict(system_state)
-        Ke = outvalues[K]
-        Ki = invalues[K]
+    def current(self, system_state=None, V_m = None, invalues=None, outvalues=None):
+        if V_m is None: V_m = self.membrane.phi(system_state)
+        Ke = outvalues[K] if outvalues is not None else self.membrane.outside.value(K,system_state)
+        Ki = invalues[K]  if invalues is not None else self.membrane.inside.value(K,system_state)
         E_K = phi / K.z * (np.log(Ke) - np.log(Ki))
 
         return {K: self.gmax*(V_m-E_K)/sqrt(Ke*1e3)/np.where( V_m<E_K, (1.0+exp(1000*(V_m-E_K))), (1.0+exp(-1000*(V_m-E_K)))/ exp(-1000*(V_m-E_K)))}
@@ -252,7 +249,7 @@ class gNMDAChannel(NMDAChannel):
         super(NMDAChannel, self).setInternalVars(system_state)
         self.Popen = self.get_Popen(system_state)
 
-    def current(self, V_m=None, system_state=None):
+    def current(self, system_state=None, V_m=None, invalues = None, outvalues = None):
         old = super(NMDAChannel, self).current(system_state)  # this is a dict
         return scalar_mult_dict(old, self.get_Popen(system_state))
 
@@ -306,15 +303,15 @@ class KSKChannel(Channel):
     # https://senselab.med.yale.edu/ModelDB/ShowModel.cshtml?model=113446&file=%5cNEURON-2008b%5csk.mod
     gmax = 2e-11
     species = [K]
-    def current(self,V_m=None, system_state=None, invalues = None, outvalues = None):
+    def current(self, system_state=None,V_m=None, invalues = None, outvalues = None):
         Cai = self.membrane.inside.value(Ca,system_state) if invalues is None else invalues[Ca]
         return {K: self.gmax/(1+power(3e-7/Cai,4.7) ) }
 
 class HoleChannel(Channel):
-    def current(self, V_m=None, system_state=None):
-        V_m = self.membrane.phi(system_state)
-        invalues = self.membrane.inside.get_val_dict(system_state)
-        outvalues = self.membrane.outside.get_val_dict(system_state)
+    def current(self, system_state=None, V_m=None, invalues = None, outvalues = None):
+        if V_m is None: V_m = self.membrane.phi(system_state)
+        if invalues is None: invalues = self.membrane.inside.get_val_dict(system_state)
+        if outvalues is None: outvalues = self.membrane.outside.get_val_dict(system_state)
         return {species: self.gmax * (V_m - phi / species.z * (np.log(outvalues[species]) - np.log(invalues[species])))
                 for species in self.species}
 

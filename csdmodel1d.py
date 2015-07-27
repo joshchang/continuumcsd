@@ -75,12 +75,17 @@ class CSDModelInterval(CSDModel):
         volumefractions = self.volumefractions(system_state)
         # the fluxes are now zero
 
+        concentrations = {compartment: compartment.get_val_dict(system_state) for compartment in self.compartments}
+
         for (key, length, index) in self.internalVars:
             if type(key) is Membrane:
                 (temp[index:(index + length)], flux, current) = key.get_dot_InternalVars(system_state, t)
+                inside_t = key.inside.tonicity(system_state, invalues = concentrations[key.inside])
+                outside_t = key.outside.tonicity(system_state, invalues = concentrations[key.outside])
+
                 compartmentfluxes[key.outside].update(flux)
                 compartmentfluxes[key.inside].update(scalar_mult_dict(flux, -1.0))
-                wf = key.waterFlow(system_state)
+                wf = key.waterFlow(system_state, tonicity = inside_t - outside_t)
                 # No waterflow into compartment if it is too full
                 # No waterflow out of compartment if it is too empty
                 condition1 = (volumefractions[key.outside]<=key.outside.minvolume)
@@ -104,7 +109,7 @@ class CSDModelInterval(CSDModel):
 
         for (key, length, index) in self.internalVars:
             if type(key) is Compartment or type(key) is CellCompartment:
-                temp[index:(index + length)] = key.get_dot_InternalVars(system_state=system_state \
+                temp[index:(index + length)] = key.get_dot_InternalVars(system_state=system_state, invalues = concentrations[key] \
                         , fluxes=compartmentfluxes[key],volumefraction=volumefractions[key],dotvolumefraction=0.0,\
                         t=t, dx = self.dx)
 

@@ -7,7 +7,7 @@ from channels import *
 from species import *
 import collections
 import operator
-
+from collections import defaultdict
 
 class Compartment(object):
     """Defines a spatial compartment
@@ -23,7 +23,8 @@ class Compartment(object):
         diffusivities ([double]): Values in m^2/s
 
     """
-    def __init__(self,name=None,minvolume = 0.05,maxvolume = 0.9):
+
+    def __init__(self, name=None, minvolume=0.05, maxvolume=0.9):
         self.name = name
         self.species = set()
         self.values = {}
@@ -41,7 +42,7 @@ class Compartment(object):
     def __str__(self):
         return self.name
 
-    def addSpecies(self,species,value,diffusivity=None,name=None):
+    def addSpecies(self, species, value, diffusivity=None, name=None):
         """Add a given species to the compartment
         Args:
             species(Species): An ion species
@@ -51,99 +52,107 @@ class Compartment(object):
 
         """
         if species in self.species:
-            self.values[species]+=value
+            self.values[species] += value
             return
         self.species.add(species)
         self.values[species] = value
         if diffusivity is None:
-            self.diffusivities[species]=species.diffusivity
-        else: self.diffusivities[species]=diffusivity
+            self.diffusivities[species] = species.diffusivity
+        else:
+            self.diffusivities[species] = diffusivity
         if name is None:
             self.names[species] = species.name
-        else: self.names[species] = name
+        else:
+            self.names[species] = name
 
-        if self.diffusivities[species] > 0 : self.diffusive = True
+        if self.diffusivities[species] > 0: self.diffusive = True
 
-    def value(self,species,system_state=None):
+    def value(self, species, system_state=None):
         if system_state is None: return self.values[species]
-        return system_state[self.system_state_offset\
-            +self.species_internal_lookup[species]:self.system_state_offset\
-            +self.species_internal_lookup[species]+self.N]
+        return system_state[self.system_state_offset \
+                            + self.species_internal_lookup[species]:self.system_state_offset \
+                                                                    + self.species_internal_lookup[species] + self.N]
 
-    def value_matrix(self,species,system_state):
-         return system_state[:,self.system_state_offset\
-            +self.species_internal_lookup[species]:self.system_state_offset\
-            +self.species_internal_lookup[species]+self.N]
+    def value_matrix(self, species, system_state):
+        return system_state[:, self.system_state_offset \
+                               + self.species_internal_lookup[species]:self.system_state_offset \
+                                                                       + self.species_internal_lookup[species] + self.N]
 
-    def get_val_dict(self,system_state=None):
+    def get_val_dict(self, system_state=None):
         """
 
         :rtype : dict
         """
         if system_state is None: return self.values
         # else, return corresponding entries in system_state
-        return { species: system_state[self.system_state_offset\
-                +self.species_internal_lookup[species]:self.system_state_offset\
-                +self.species_internal_lookup[species]+self.N] for species in self.species}
+        return {species: system_state[self.system_state_offset \
+                                      + self.species_internal_lookup[species]:self.system_state_offset \
+                                                                              + self.species_internal_lookup[
+                                                                                  species] + self.N] for species in
+                self.species}
 
-    def get_val_matrix_dict(self,system_state):
+    def get_val_matrix_dict(self, system_state):
         """
 
         :rtype : dict
         """
         if system_state is None: return self.values
         # else, return corresponding entries in system_state
-        return { species: system_state[:,self.system_state_offset\
-                +self.species_internal_lookup[species]:self.system_state_offset\
-                +self.species_internal_lookup[species]+self.N] for species in self.species}
+        return {species: system_state[:, self.system_state_offset \
+                                         + self.species_internal_lookup[species]:self.system_state_offset \
+                                                                                 + self.species_internal_lookup[
+                                                                                     species] + self.N] for species in
+                self.species}
 
-    def setInternalVars(self,values):
+    def setInternalVars(self, values):
         j = 0
         for key, val in self.values.items():
-            self.values[key] = values[j:(j+len(val))]
-            j+= len(val)
+            self.values[key] = values[j:(j + len(val))]
+            j += len(val)
         pass
 
     def getInternalVars(self):
-        #return np.array(self.values.values()).flatten()
+        # return np.array(self.values.values()).flatten()
         temp = np.zeros(sum([item[1] for item in self.internalVars]))
-        for (key,length,index) in self.internalVars:
+        for (key, length, index) in self.internalVars:
             if type(key) is Species:
-                temp[index:index+length] = self.value(key)
+                temp[index:index + length] = self.value(key)
             else:
-                temp[index:index+length] = key.getInternalVars()
+                temp[index:index + length] = key.getInternalVars()
 
         return temp
 
-    def get_dot_InternalVars(self,system_state,fluxes=None,volumefraction=1.0,dotvolumefraction = 0.0,t=None,dx=0):
+    def get_dot_InternalVars(self, system_state, fluxes=defaultdict(float), invalues = None, volumefraction=1.0, dotvolumefraction=0.0, t=None, dx=0):
         """
         Expect a dictionary of fluxes into the compartment
         The fluxes are already adjusted for the volume of the compartment
         """
         temp = np.zeros(sum([item[1] for item in self.internalVars]))
-        concentrations = self.get_val_dict(system_state)
+        concentrations = self.get_val_dict(system_state) if invalues is None else invalues
 
-        for (key,length,index) in self.internalVars:
+
+        for (key, length, index) in self.internalVars:
             if type(key) is Species:
                 concentration = concentrations[key]
                 sourceterm = fluxes[key]
-                volumeterm = dotvolumefraction*concentration
+                volumeterm = dotvolumefraction * concentration
                 diffusionterm = 0
                 electrodiffusion = 0
-                if dx>0 and self.diffusive:
+                if dx > 0 and self.diffusive:
                     # Add diffusion somehow...
                     dconc = np.zeros(self.N)
-                    dconc[1:-1] = (concentration[2:]-concentration[:-2])/dx
+                    dconc[1:-1] = (concentration[2:] - concentration[:-2]) / dx
                     ddconc = np.zeros(self.N)
-                    ddconc[1:-1] = (concentration[2:]- 2*concentration[1:-1]+ concentration[:-2])/dx**2
-                    ddconc[0] = dconc[1]/dx
-                    ddconc[-1] = -dconc[-2]/dx
+                    ddconc[1:-1] = (concentration[2:] - 2 * concentration[1:-1] + concentration[:-2]) / dx ** 2
+                    ddconc[0] = dconc[1] / dx
+                    ddconc[-1] = -dconc[-2] / dx
                     dvolumefraction = np.zeros(self.N)
-                    dvolumefraction[1:-1] = (volumefraction[2:]-volumefraction[:-2])/dx
-                    dvolumefraction[0] = (volumefraction[1]-volumefraction[0])/dx
-                    dvolumefraction[-1] = (volumefraction[-1]-volumefraction[-2])/dx
-                    #np.gradient(volumefraction,dx,edge_order=2)
-                    diffusionterm = self.diffusivities[key]*volumefraction*ddconc+self.diffusivities[key]*dvolumefraction*dconc
+                    dvolumefraction[1:-1] = (volumefraction[2:] - volumefraction[:-2]) / dx
+                    dvolumefraction[0] = (volumefraction[1] - volumefraction[0]) / dx
+                    dvolumefraction[-1] = (volumefraction[-1] - volumefraction[-2]) / dx
+                    # np.gradient(volumefraction,dx,edge_order=2)
+                    diffusionterm = self.diffusivities[key] * volumefraction * ddconc + self.diffusivities[
+                                                                                            key] * dvolumefraction * dconc
                     phi = self.phi(system_state)
                     try:
                         """
@@ -153,30 +162,31 @@ class Compartment(object):
 
                         dphi = np.zeros(self.N)
                         ddphi = np.zeros(self.N)
-                        dphi[1:-1] = (phi[2:]-phi[:-2])/dx
-                        ddphi[1:-1] = (phi[2:]+2*phi[1:-1]-phi[:-2])/dx**2
-                        ddphi[0] = dphi[1]/dx
-                        ddphi[-1] = -dphi[-1]/dx
+                        dphi[1:-1] = (phi[2:] - phi[:-2]) / dx
+                        ddphi[1:-1] = (phi[2:] + 2 * phi[1:-1] - phi[:-2]) / dx ** 2
+                        ddphi[0] = dphi[1] / dx
+                        ddphi[-1] = -dphi[-1] / dx
 
                     except:
                         dphi = 0
                         ddphi = 0
 
-
-                temp[index: (index+length)]  = (sourceterm + diffusionterm+electrodiffusion - volumeterm)/volumefraction
+                temp[index: (index + length)] = (
+                                                sourceterm + diffusionterm + electrodiffusion - volumeterm) / volumefraction
 
             else:
-                temp[(self.system_state_offset+index):(self.system_state_offset+index+length)] = key.get_dot_InternalVars(system_state)
+                temp[(self.system_state_offset + index):(
+                self.system_state_offset + index + length)] = key.get_dot_InternalVars(system_state)
 
         return temp
 
-    def phi(self,system_state):
+    def phi(self, system_state):
         return 0
 
-    def setValue(self,species,value):
+    def setValue(self, species, value):
         self.values[species] = value
 
-    def addReaction(self,reaction):
+    def addReaction(self, reaction):
         reaction.compartment = self
         reaction.equilibriate()
         self.reactions.extend([reaction])
@@ -185,21 +195,22 @@ class Compartment(object):
         pass
 
     def printvalues(self):
-        for species,value in self.values.items():
-            print("%s: %.3f" % (self.names[species], value) )
+        for species, value in self.values.items():
+            print("%s: %.3f" % (self.names[species], value))
 
-    def tonicity(self,system_state=None):
+    def tonicity(self, system_state=None, invalues=None):
+        if invalues is not None:
+            return np.sum(list(invalues.values()), axis=0)
         if system_state is None:
-            return np.sum(list(self.values.values()),axis = 0)
+            return np.sum(list(self.values.values()), axis=0)
         else:
-            return np.sum([self.value(species,system_state) for species in self.species],axis=0)
+            return np.sum([self.value(species, system_state) for species in self.species], axis=0)
 
-
-    def charge(self,system_state = None):
+    def charge(self, system_state=None):
         if system_state is None:
-            return np.sum([value*species.z for species, value in self.values.items()],axis=0)
+            return np.sum([value * species.z for species, value in self.values.items()], axis=0)
         else:
-            return np.sum([self.value(species,system_state)*species.z for species in self.species],axis=0)
+            return np.sum([self.value(species, system_state) * species.z for species in self.species], axis=0)
 
     def balanceCharge(self):
         """
@@ -207,25 +218,27 @@ class Compartment(object):
         balance both the tonicity and the charge
         """
         charge = self.charge()
-        if charge >1e-20: self.addSpecies(Anion,-charge/Anion.z,0,"Anion")
-        elif charge<-1e-20: self.addSpecies(Cation,-charge/Anion.z,0,"Cation")
+        if charge > 1e-20:
+            self.addSpecies(Anion, -charge / Anion.z, 0, "Anion")
+        elif charge < -1e-20:
+            self.addSpecies(Cation, -charge / Anion.z, 0, "Cation")
 
-    def balanceWith(self,compartment):
+    def balanceWith(self, compartment):
         # Add anion and cation species to this compartment to achieve electroneutrality in this compartment
         # and isotonicity with outer compartment
         charge_deficit = np.float64(compartment.charge() - self.charge())
         tonicity_deficit = np.float64(compartment.tonicity() - self.tonicity())
-        if tonicity_deficit<0.0:
+        if tonicity_deficit < 0.0:
             print("Tonicity is too high in this compartment already to do anything")
             print("Add some particles to " + compartment.name)
             return
-        if abs(charge_deficit)>1e-20:
-            self.addSpecies(Cation,np.float64((charge_deficit+tonicity_deficit)*0.5),0,"Cation")
-            self.addSpecies(Anion,np.float64((tonicity_deficit-charge_deficit)*0.5),0,"Anion")
-        elif tonicity_deficit>1e-20:
+        if abs(charge_deficit) > 1e-20:
+            self.addSpecies(Cation, np.float64((charge_deficit + tonicity_deficit) * 0.5), 0, "Cation")
+            self.addSpecies(Anion, np.float64((tonicity_deficit - charge_deficit) * 0.5), 0, "Anion")
+        elif tonicity_deficit > 1e-20:
             # Add in equal proportions to balance things
-            self.addSpecies(Anion,np.float64(-tonicity_deficit*0.5),0,"Anion")
-            self.addSpecies(Cation,np.float64(-tonicity_deficit*0.5),0,"Cation")
+            self.addSpecies(Anion, np.float64(-tonicity_deficit * 0.5), 0, "Anion")
+            self.addSpecies(Cation, np.float64(-tonicity_deficit * 0.5), 0, "Cation")
 
 
 class CellCompartment(Compartment):
@@ -235,11 +248,12 @@ class CellCompartment(Compartment):
             units are SI
         name (String): name of compartment
     """
-    def __init__(self,name,density):
-        super(self.__class__,self).__init__(name)
-        self.density = density #number of these compartments per unit volume (SI units)
 
-    def volume(self,system_state):
+    def __init__(self, name, density):
+        super(self.__class__, self).__init__(name)
+        self.density = density  # number of these compartments per unit volume (SI units)
+
+    def volume(self, system_state):
         '''
 
         :param system_state: The entire system state as a numpy vector
