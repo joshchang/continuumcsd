@@ -21,7 +21,7 @@ from scipy.integrate import ode
 
 
 def scalar_mult_dict(dictionary, scalar):
-    return {key: scalar * value for key, value in dictionary.items()}
+    return {key: scalar * value for key, value in dictionary.iteritems()}
 
 
 class CSDModelInterval(CSDModel):
@@ -72,7 +72,7 @@ class CSDModelInterval(CSDModel):
         """
         compartmentfluxes = {compartment: customdict(float) for compartment in self.compartments}
         waterflows = {compartment: 0.0 for compartment in self.compartments}
-        volumefractions = self.volumefractions(system_state)
+        volumefractions = self.volumefractions(system_state=system_state)
         # the fluxes are now zero
 
         concentrations = {compartment: compartment.get_val_dict(system_state) for compartment in self.compartments}

@@ -49,10 +49,10 @@ class Buffer(Reaction):
         return system_state[self.system_state_offset:self.system_state_offset+self.N]
 
     def setInternalVars(self,system_state):
-        self.state = system_state[self.system_state_offset:self.system_state_offset+N]
+        self.state = system_state[self.system_state_offset:self.system_state_offset+self.N]
 
     def get_dot_InternalVars(self,system_state):
-
+        values = self.getInternalVars(system_state)
         return self.kon*self.compartment.value(self.species)-self.koff*(self.capacity-values)
 
 class CaBuffer(Reaction):

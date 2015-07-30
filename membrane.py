@@ -14,10 +14,10 @@ def scalar_mult_dict(dictionary, scalar):
 
     :type scalar: scalar number
     """
-    return { key: scalar*value for key,value in dictionary.items()}
+    return { key: scalar*value for key,value in dictionary.iteritems()}
 
 def dictmult(dict1,dict2):
-    return {key: value*dict2[key] for key,value in dict1.items()}
+    return {key: value*dict2[key] for key,value in dict1.iteritems()}
 
 class Coupling(object):
     """
@@ -51,6 +51,7 @@ class Membrane(Coupling):
         self.compartments = [self.inside,self.outside] # pointer for convenience
         self.channels = []
         self.channeldensity = {}
+        self.reactions = []
         self.species = set()
         self.Cm = Cm
         self.phi_m = phi_m
@@ -84,7 +85,7 @@ class Membrane(Coupling):
         outvalues = self.outside.get_val_dict(system_state)
 
         currents = self.currents(system_state=system_state, V_m = V_m, invalues = invalues, outvalues = outvalues)
-        fluxes = {species: current/F/species.z for species, current in currents.items() }
+        fluxes = {species: current/F/species.z for species, current in currents.iteritems() }
 
         totalcurrents = np.sum(currents.values(),axis = 0)
 
@@ -99,6 +100,10 @@ class Membrane(Coupling):
         """
         pass
 
+    def addReaction(self,reaction):
+        reaction.membrane = self
+        reaction.equilibriate()
+        self.reactions.extend([reaction])
 
     def addChannel(self,channel,density):
         """ Add a single channel to the membrane
@@ -112,12 +117,13 @@ class Membrane(Coupling):
             if channel.species in self.species:
                 currents = self.currents()
                 residual = currents[channel.species]
-                #print residual
-                gmax = -residual/(self.phi()-self.phi_ion(channel.species))/density
+                gmax = -residual/(self.phi()-self.phi_ion(channel.species))
                 if channel.gmax<0:
                     print("Not adding leak because it doesn't balance anything. Try adding a pump first")
                     return
-                channel.set_gmax(gmax)
+                normalcurrent = channel.current()
+                permability = -residual/normalcurrent[channel.species]
+                channel.set_permeability(permability)
 
         channel.membrane = self
         channel.equilibriate()
@@ -137,23 +143,27 @@ class Membrane(Coupling):
 
     def addLeakChannels(self):
         """
-           Add leak channels for each of the ion species that go through the channel in order to achieve balance
+           Find permeabilities for GHK leak currents
         """
         currents = self.currents()  # these are the residual currents to balance
-        for species, residual in currents.items():
+        for species, residual in currents.iteritems():
             if abs(self.phi()-self.phi_ion(species))<1e-20:
-                gmax = 0.0
-            else: gmax = -residual/(self.phi()-self.phi_ion(species))
+                continue
+            gmax = -residual/(self.phi()-self.phi_ion(species))
             if gmax<0:
                 print("Adding a leak channel does nothing to balance " + str(species))
                 continue
-            else:
-                print ("Ion: %s, g_leak: %8.2E" %(str(species),gmax))
-                channel = LeakChannel(species)
-                channel.membrane = self
-                channel.set_gmax(gmax)
-                self.channeldensity[channel] = 1.0
-                self.channels.extend([channel])
+
+            channel = LeakChannel(species)
+            channel.membrane = self
+
+            normalcurrent = channel.current()
+            permability = -residual/normalcurrent[species]
+
+            channel.set_permeability(permability)
+            self.channeldensity[channel] = 1.0
+            self.channels.extend([channel])
+            print ("Ion: %s, P_leak: %8.2E" %(str(species),permability))
 
     def currents(self, system_state = None, V_m = None, invalues = None, outvalues = None):
         """ Compute the instantaneous total currents through the membrane for single cells
@@ -168,23 +178,25 @@ class Membrane(Coupling):
         # Compute first ion-specific terms for GHK
 
         # Compute ghkcurrents
-        ''' # using np.where
-        ghkcurrents = {species: np.where( V_m*species.z<0, F*V_m*species.z/phi*(self.inside.value(species,system_state)*exp(V_m*species.z/phi)-self.outside.value(species,system_state))/(exp(V_m*species.z/phi)-1.0), 
-            F*V_m*species.z/phi*(self.inside.value(species,system_state)-self.outside.value(species,system_state)*exp(-V_m*species.z/phi))/(1.0-exp(-V_m*species.z/phi))) \
-            for species in self.species}
-        '''
+        try:
+            ghkcurrents = {species: np.where( V_m*species.z<0, F*V_m*species.z**2/phi*(invalues[species]*exp(V_m*species.z/phi)-outvalues[species])/(exp(V_m*species.z/phi)-1.0),
+                F*V_m*species.z**2/phi*(invalues[species]-outvalues[species]*exp(-V_m*species.z/phi))/(1.0-exp(-V_m*species.z/phi))) \
+                for species in self.species}
+        except OverflowError:
+            print(V_m*species.z/phi)
 
         # take advantage of how V_m is pretty much always negative
         # recall that phi = RT/F
-
+        '''
         ghkcurrents = {species:F*species.z**2*V_m/phi*(invalues[species]*exp(V_m*species.z/phi)-outvalues[species])/(exp(V_m*species.z/phi)-1.0) if species.z>0 else
                             F*species.z**2*V_m/phi*(invalues[species]-outvalues[species]*exp(-V_m*species.z/phi))/(1.0-exp(-V_m*species.z/phi))
                        for species in self.species}
+                       '''
         counter = customdict(float)
 
         for channel in self.channels:
             if issubclass(type(channel),GHKChannel):
-                counter.update( dictmult(channel.conductance(system_state=system_state, V_m = V_m,invalues = invalues, outvalues = outvalues), scalar_mult_dict(ghkcurrents,self.channeldensity[channel])))
+                counter.update( dictmult(channel.permeability(system_state=system_state, V_m = V_m,invalues = invalues, outvalues = outvalues), scalar_mult_dict(ghkcurrents,self.channeldensity[channel])))
             else:
                 counter.update(scalar_mult_dict(channel.current(system_state=system_state, V_m = V_m,invalues = invalues, outvalues = outvalues),self.channeldensity[channel]))
 
@@ -196,7 +208,7 @@ class Membrane(Coupling):
         # These fluxes are per total volume and not yet adjusted for volume fraction
         """
         currents = self.currents(system_state=system_state)
-        fluxes = {key: current/F/key.z*self.inside.density for key, current in currents.items() }
+        fluxes = {key: current/F/key.z*self.inside.density for key, current in currents.iteritems() }
         return fluxes
 
     def waterFlow(self,system_state = None, V_m = None, invalues = None, outvalues = None, tonicity = None):
@@ -223,7 +235,7 @@ class Membrane(Coupling):
             V_m = self.phi(system_state)
 
         currents = self.currents(V_m=V_m, system_state=system_state)
-        fluxes = {key: current/F/key.z*self.inside.density for key, current in currents.items() }
+        fluxes = {key: current/F/key.z*self.inside.density for key, current in currents.iteritems() }
         return currents, fluxes
 
     def removeChannel(self,channel):

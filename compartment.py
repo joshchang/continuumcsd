@@ -8,6 +8,7 @@ from species import *
 import collections
 import operator
 from collections import defaultdict
+from customdict import *
 
 class Compartment(object):
     """Defines a spatial compartment
@@ -106,7 +107,7 @@ class Compartment(object):
 
     def setInternalVars(self, values):
         j = 0
-        for key, val in self.values.items():
+        for key, val in self.values.iteritems():
             self.values[key] = values[j:(j + len(val))]
             j += len(val)
         pass
@@ -122,7 +123,7 @@ class Compartment(object):
 
         return temp
 
-    def get_dot_InternalVars(self, system_state, fluxes=defaultdict(float), invalues = None, volumefraction=1.0, dotvolumefraction=0.0, t=None, dx=0):
+    def get_dot_InternalVars(self, system_state, fluxes=customdict(float), invalues = None, volumefraction=1.0, dotvolumefraction=0.0, t=None, dx=0):
         """
         Expect a dictionary of fluxes into the compartment
         The fluxes are already adjusted for the volume of the compartment
@@ -195,7 +196,7 @@ class Compartment(object):
         pass
 
     def printvalues(self):
-        for species, value in self.values.items():
+        for species, value in self.values.iteritems():
             print("%s: %.3f" % (self.names[species], value))
 
     def tonicity(self, system_state=None, invalues=None):
@@ -208,7 +209,7 @@ class Compartment(object):
 
     def charge(self, system_state=None):
         if system_state is None:
-            return np.sum([value * species.z for species, value in self.values.items()], axis=0)
+            return np.sum([value * species.z for species, value in self.values.iteritems()], axis=0)
         else:
             return np.sum([self.value(species, system_state) * species.z for species in self.species], axis=0)
 
