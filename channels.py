@@ -15,10 +15,103 @@ from channel import *
 import collections
 from collections import defaultdict
 
+class NaTChannel(GHKChannel):
+    species = [Na]
+    p = 3
+    q = 1
+    max_permeability = np.array([3e-12])
+
+    def alpham(self, V_m):
+        return -320.0*(V_m*1000+51.9)/(exp(-.25*(V_m*1000+51.9))-1.0+1e-17)
+
+    def betam(self, V_m):
+        return 280.0*(V_m*1000+24.89)/(exp(.200*(V_m*1000+24.89))-1.0+1e-17)
+
+    def alphah(self, V_m):
+        return 128.0*exp(-(56*V_m+2.94))
+
+    def betah(self, V_m):
+        return 4000./(exp(-(200*V_m+6.0))+1.0)
+
+class NaPChannel(GHKChannel):
+    species = [Na]
+    p = 2
+    q = 1
+    max_permeability = np.array([3e-12])
+
+    def alpham(self, V_m):
+        '''
+
+        :param V_m: Membrane potential in Volts
+        :return: 1/s
+        '''
+        return 1000*pow(6.0 * (1 + exp(-(143 * V_m + 5.67))), -1)
+
+    def betam(self, V_m):
+        return 1000.0/6.0*(1.0-1./(1+exp(-(143*V_m+5.67))))
+
+    def alphah(self, V_m):
+        return 5.12e-8 * 1000 *exp(-(56*V_m+2.94))
+
+
+    def betah(self, V_m):
+        return 1.6e-6 * 1000 * pow(1 + exp(-(200 * V_m + 8.0)), -1)
+
+class KDRChannel(GHKChannel):
+    # https://senselab.med.yale.edu/ModelDB/ShowModel.cshtml?model=113446&file=%5cNEURON-2008b%5ckdr.mod
+    species = [K]
+    p = 2
+    q = 0
+    max_permeability = np.array([1.75e-12])
+
+    def alpham(self, V_m):
+        return -16.0 *(V_m*1000+34.9)/(exp(-0.2*(V_m*1000+34.9))-1.0)
+
+    def betam(self, V_m):
+        return 250 * exp(-(250.0 * V_m + 1.25))
+
+class KAChannel(GHKChannel):
+    species = [K]
+    max_permeability = np.array([2.5e-12])  # permeability
+    p = 2
+    q = 1
+
+    def alpham(self, V_m):
+        return -20*(V_m*1000+56.9)/(exp(-0.1*(V_m*1000+56.9))-1.0+1e-20)
+
+    def betam(self, V_m):
+        return 17.5*(V_m*1000+29.9)/(exp(0.1*(V_m*1000+29.9))-1.0+1e-20)
+
+    def alphah(self, V_m):
+        return 16.0*exp(-(56*V_m+4.61))
+
+    def betah(self, V_m):
+        return 500/(exp(-(200*V_m+11.98))+1)
+
+
+class NMDAChannel(GHKChannel):
+    p = 1
+    q = 1
+    # name = 'GLutamate-independent NMDA channel'
+    species = [Na, K, Ca]
+    max_permeability = np.array([2, 2, 20]) * 1e-12
+
+    def alpham(self, V_m):
+        return 0.5 / (1 + exp((13.5e-3 - self.membrane.outside.value(K)) / 1.42e-3))
+
+    def betam(self, V_m):
+        return 0.5 - self.alpham(V_m)
+
+    def alphah(self, V_m):
+        return power(2.0e3 * (1.0 + exp((self.membrane.outside.value(K) - 6.75e-3) / 0.71e-3)), -1)
+
+    def betah(self, V_m):
+        return 5e-4 - self.alphah(V_m)
+
 
 class NaKATPasePump(Channel):
     species = [K, Na]
-    gmax = np.array([-2.0, 3.0]) * 2e-9  # 2K per 3Na
+    gmax = np.array([-2.0, 3.0]) * 2e-4  # 2K per 3Na
 
     def current(self, system_state=None, V_m=None, invalues=None, outvalues=None):
         Ke = self.membrane.outside.value(K,system_state) if outvalues is None else outvalues[K]
@@ -87,59 +180,6 @@ class PMCAPump(Channel):
         Cai = invalues[Ca] if invalues is not None else self.membrane.inside.value(Ca,system_state)
         return {Ca: self.gmax / (1 + power(KPMCA / Cai, h))}
 
-
-class NaPChannel(GHKChannel):
-    species = [Na]
-    p = 2
-    q = 1
-    max_permeability = np.array([3e-15])
-
-    def alpham(self, V_m):
-        return pow(6.0 * (1 + exp(-(143 * V_m + 5.67))), -1)
-
-    def alphah(self, V_m):
-        return 5.12e-8 * exp(-(56 * V_m + 2.94))
-
-    def betam(self, V_m):
-        return self.alpham(V_m) * exp(-(143 * V_m + 5.67));
-
-    def betah(self, V_m):
-        return 1.6e-6 * pow(1 + exp(-(200 * V_m + 8.0)), -1)
-
-
-class NaTChannel(GHKChannel):
-    species = [Na]
-    p = 3
-    q = 1
-    max_permeability = np.array([3e-15])
-
-    def alpham(self, V_m):
-        return 0.32 * (V_m + 51.9e-3) / (1.0 - exp(-(250 * V_m + 12.975)))
-
-    def betam(self, V_m):
-        return 0.28 * (V_m + 24.89e-3) / (exp(-(200 * V_m + 4.978)) - 1.0)
-
-    def alphah(self, V_m):
-        return 0.128 * exp(-56 * V_m + 2.94)
-
-    def betah(self, V_m):
-        return 1.6e-6 / (1 + exp(-200 * V_m + 6.0))
-
-
-class KDRChannel(GHKChannel):
-    # https://senselab.med.yale.edu/ModelDB/ShowModel.cshtml?model=113446&file=%5cNEURON-2008b%5ckdr.mod
-    species = [K]
-    p = 2
-    q = 0
-    max_permeability = np.array([1.75e-15])
-
-    def alpham(self, V_m):
-        return 16.0 * (V_m + 34.9e-3) / (1.0 - exp(-(200 * V_m + 6.98)))
-
-    def betam(self, V_m):
-        return 0.25 * exp(-(250.0 * V_m + 1.25))
-
-
 class NonSpecificChlorideChannel(Channel):
     gmax = 2e-11
     species = [Cl]
@@ -168,50 +208,11 @@ class KIRChannel(Channel):
         Ke = outvalues[K] if outvalues is not None else self.membrane.outside.value(K,system_state)
         Ki = invalues[K]  if invalues is not None else self.membrane.inside.value(K,system_state)
         E_K = phi / K.z * (np.log(Ke) - np.log(Ki))
-
-        return {K: self.gmax*(V_m-E_K)/sqrt(Ke*1e3)/np.where( V_m<E_K, (1.0+exp(1000*(V_m-E_K))), (1.0+exp(-1000*(V_m-E_K)))/ exp(-1000*(V_m-E_K)))}
+        return {K: self.gmax*(V_m-E_K)/sqrt(Ke*1e3)/(1.0+exp(1000*(V_m-E_K))) }
+        #return {K: self.gmax*(V_m-E_K)/sqrt(Ke*1e3)/np.where( V_m<E_K, (1.0+exp(1000*(V_m-E_K))), (1.0+exp(-1000*(V_m-E_K)))/ exp(-1000*(V_m-E_K)))}
 
     def current_infty(self, V_m):
         return self.current(V_m)
-
-
-class KAChannel(GHKChannel):
-    species = [K]
-    max_permeability = np.array([2.5e-15])  # Siemens
-    p = 2
-    q = 1
-
-    def alpham(self, V_m):
-        return 20.0 * (V_m + 56.9e-3) / (1 - exp(-(100 * V_m + 5.69)))
-
-    def betam(self, V_m):
-        return 17.5 * (V_m + 29.9e-3) / (exp(-(100 * V_m + 2.99)) - 1)
-
-    def alphah(self, V_m):
-        return 16.0 * exp(-(56 * V_m + 4.61))
-
-    def betah(self, V_m):
-        return 0.5 / (1 + exp(-(200 * V_m + 11.98)))
-
-
-class NMDAChannel(GHKChannel):
-    p = 1
-    q = 1
-    # name = 'GLutamate-independent NMDA channel'
-    species = [Na, K, Ca]
-    max_permeability = np.array([2, 2, 20]) * 1e-15
-
-    def alpham(self, V_m):
-        return 0.5 / (1 + exp((13.5e-3 - self.membrane.outside.value(K)) / 1.42e-3))
-
-    def betam(self, V_m):
-        return 0.5 - self.alpham(V_m)
-
-    def alphah(self, V_m):
-        return power(2.0e3 * (1.0 + exp((self.membrane.outside.value(K) - 6.75e-3) / 0.71e-3)), -1)
-
-    def betah(self, V_m):
-        return 5e-4 - self.alphah(V_m)
 
 
 class gNMDAChannel(NMDAChannel):
@@ -259,41 +260,42 @@ class KDRglialChannel(GHKChannel):
     p = 4
     q = 0
     species = [K]
-    max_permeability = [1e-15]
+    max_permeability = [1e-12]
 
     def alpham(self, V_m):
         scaletaun = 1.5
         shiftn = 0.05
-        return scaletaun * 16.0 * (0.0351 - V_m - shiftn - 0.07) / (exp((35.1e-3 - V_m - shiftn - .07) / 0.05) - 1.0)
+        return scaletaun * 16000.0 * (0.0351 - V_m - shiftn - 0.07) / (exp((35.1e-3 - V_m - shiftn - .07) / 0.05) - 1.0)
 
     def betam(self, V_m):
         scaletaun = 1.5
         shiftn = 0.05
-        return scaletaun * 0.25 * exp((.02 - V_m - 0.07) / 0.04)
+        return scaletaun * 250.0 * exp((.02 - V_m - 0.07) / 0.04)
 
 class CaLChannel(GHKChannel):
+    #Somjen channel: https://senselab.med.yale.edu/ModelDB/ShowModel.cshtml?model=113446&file=%5cNEURON-2008b%5ccal2.mod
     species = [Ca]
-    max_permeability = np.array([1e-15])
-    p = 1
+    max_permeability = np.array([1e-12])
+    p = 2
     q = 0
     def alpham(self, V_m, system_state = None):
-        return .333333*15.69*(-1000*V_m-10+81.5)*exp((1000*V_m+10-81.5)/10.0)/(-exp((1000*V_m+10-81.5)/10.0)+1.0)
+        return 333.333*15.69*(-1000*V_m-10+81.5)*exp((1000*V_m+10-81.5)/10.0)/(-exp((1000*V_m+10-81.5)/10.0)+1.0)
     def betam(self, V_m, system_state = None):
-        return .333333*0.29/exp((1000*V_m+10)/10.86)
+        return 333.333*0.29/exp((1000*V_m+10)/10.86)
 
 class CaPChannel(GHKChannel):
     species = [Ca]
-    max_permeability = np.array([4e-15])
+    max_permeability = np.array([4e-12])
     p = 1
     q = 1
     def alphah(self, V_m, system_state = None):
-        return 0.0015/(1+exp( (1000*V_m+29)/8))
+        return 001.5/(1+exp( (1000*V_m+29)/8))
     def betah(self, V_m, system_state = None):
-        return 0.0055*exp((1000*V_m+23)/8)/(1+exp((1000*V_m+23)/8))
+        return 005.5*exp((1000*V_m+23)/8)/(1+exp((1000*V_m+23)/8))
     def alpham(self, V_m, system_state = None):
-        return 8.5*exp((1000*V_m-8)/12.5)/(1+exp((1000*V_m-8)/12.5))
+        return 8500.0*exp((1000*V_m-8)/12.5)/(1+exp((1000*V_m-8)/12.5))
     def betam(self, V_m, system_state=None):
-        return 35.0/(1+exp((1000*V_m+74)/14.5))
+        return 35000.0/(1+exp((1000*V_m+74)/14.5))
 
 class KSKChannel(Channel):
     # https://senselab.med.yale.edu/ModelDB/ShowModel.cshtml?model=113446&file=%5cNEURON-2008b%5csk.mod

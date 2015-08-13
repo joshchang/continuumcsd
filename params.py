@@ -17,8 +17,10 @@ DCa = 2e-9 # fix this!!
 DIP3 = 2.8e-10
 
 # Per neuron
-Cn = 170e-10
-Cg = 13.45e-10 #http://jn.physiology.org/content/82/5/2731
+Cn = 170e-12
+Cg = 13.45e-12 #http://jn.physiology.org/content/82/5/2731
+
+# 1e-6 F/cm^2
 
 # Initial values
 Ke0 = 3.5e-3

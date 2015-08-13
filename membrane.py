@@ -178,20 +178,14 @@ class Membrane(Coupling):
         # Compute first ion-specific terms for GHK
 
         # Compute ghkcurrents
+        ghkcurrents = {}
         try:
             ghkcurrents = {species: np.where( V_m*species.z<0, F*V_m*species.z**2/phi*(invalues[species]*exp(V_m*species.z/phi)-outvalues[species])/(exp(V_m*species.z/phi)-1.0),
                 F*V_m*species.z**2/phi*(invalues[species]-outvalues[species]*exp(-V_m*species.z/phi))/(1.0-exp(-V_m*species.z/phi))) \
                 for species in self.species}
-        except OverflowError:
-            print(V_m*species.z/phi)
+        except:
+            pass
 
-        # take advantage of how V_m is pretty much always negative
-        # recall that phi = RT/F
-        '''
-        ghkcurrents = {species:F*species.z**2*V_m/phi*(invalues[species]*exp(V_m*species.z/phi)-outvalues[species])/(exp(V_m*species.z/phi)-1.0) if species.z>0 else
-                            F*species.z**2*V_m/phi*(invalues[species]-outvalues[species]*exp(-V_m*species.z/phi))/(1.0-exp(-V_m*species.z/phi))
-                       for species in self.species}
-                       '''
         counter = customdict(float)
 
         for channel in self.channels:

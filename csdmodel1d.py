@@ -55,7 +55,7 @@ class CSDModelInterval(CSDModel):
         super(CSDModelInterval, self).assembleSystem()
         # 1D???
 
-    def ode_rhs(self, t, system_state):
+    def ode_rhs(self, t, system_state, debug = False):
         """
         Take the native model variables and create a single vector
         Add diffusion for the diffusing variables!
@@ -79,7 +79,7 @@ class CSDModelInterval(CSDModel):
 
         for (key, length, index) in self.internalVars:
             if type(key) is Membrane:
-                (temp[index:(index + length)], flux, current) = key.get_dot_InternalVars(system_state, t)
+                (temp[index:(index + length)], flux, current) = key.get_dot_InternalVars(system_state, t) # output ydot, ion flux, current
                 inside_t = key.inside.tonicity(system_state, invalues = concentrations[key.inside])
                 outside_t = key.outside.tonicity(system_state, invalues = concentrations[key.outside])
 
@@ -100,7 +100,7 @@ class CSDModelInterval(CSDModel):
                 flux = key.flux(system_state)
                 compartmentfluxes[key.compartment].update(flux)
 
-            elif type(key) is not Compartment and type(key) is not CellCompartment:
+            elif not issubclass(type(key), Compartment):
                 try:
                     temp[index:(index + length)] = key.get_dot_InternalVars(system_state, t)
                 except:
@@ -108,10 +108,12 @@ class CSDModelInterval(CSDModel):
 
 
         for (key, length, index) in self.internalVars:
-            if type(key) is Compartment or type(key) is CellCompartment:
+            if issubclass(type(key), Compartment):
                 temp[index:(index + length)] = key.get_dot_InternalVars(system_state=system_state, invalues = concentrations[key] \
                         , fluxes=compartmentfluxes[key],volumefraction=volumefractions[key],dotvolumefraction=0.0,\
                         t=t, dx = self.dx)
+            elif type(key) is CellCompartment:
+                print "WTF"
 
         # Also compute the fluxes and determine the changes in the concentrations
 
@@ -122,5 +124,6 @@ class CSDModelInterval(CSDModel):
         for j in xrange(self.numcompartments - 1):
             temp[(self._N_internal_object + j * self.N):(self._N_internal_object + (j + 1) * self.N)] = waterflows[self.compartments[j]]
 
+        if debug: return temp, compartmentfluxes
         return temp
 

@@ -335,5 +335,8 @@ class LeakChannel(GHKChannel):
         self.species = [species]
         self.max_permeability = [1.0]
 
+    def permeability(self, system_state=None, V_m = None, invalues=None, outvalues=None):
+        return {self.species[0] : np.ones(self.N)*self.max_permeability[0] }
+
     def set_permeability(self, permeability):
         self.max_permeability = [permeability]
