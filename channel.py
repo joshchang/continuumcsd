@@ -68,6 +68,8 @@ class Channel(object):
 class GHKChannel(Channel):
     m = 0.0
     h = 1.0
+    p = 0
+    q = 0
     max_permeability = None
 
     def current(self, system_state=None, V_m = None, invalues=None, outvalues=None):

@@ -17,8 +17,13 @@ DCa = 2e-9 # fix this!!
 DIP3 = 2.8e-10
 
 # Per neuron
-Cn = 170e-12
+Cn = 1.70e-10
+An_cm = Cn*1e6
+An = An_cm*1e-4
+
 Cg = 13.45e-12 #http://jn.physiology.org/content/82/5/2731
+Ag_cm = Cg*1e6  #square cm
+Ag = Ag_cm*1e-4 # squared meters
 
 # 1e-6 F/cm^2
 

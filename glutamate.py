@@ -1,6 +1,6 @@
 '''
 Glutamate exocytosis dependent on docking pool/reserve pool/intracellular calcium concentration
-This is a membrane reaction
+This is a membrane "channel"
 '''
 
 from species import *
@@ -10,7 +10,7 @@ from compartment import *
 from membrane import *
 import numpy as np
 
-class GlutmateExocytosis(Reaction):
+class GlutmateExocytosis(Channel):
     species = [Glu]
     a1 = 5e-5
     a2 = 5e-6
@@ -26,3 +26,5 @@ class GlutmateExocytosis(Reaction):
         pass
 
 
+class GlutamatePacker(Reaction):
+    species = [Glu]
