@@ -137,7 +137,7 @@ class CSDModel(object):
             tmp = membrane.getInternalVars()
             if tmp is not None:
                 self.internalVars.extend( [(membrane,len(tmp),index)] )
-                membrane.system_state_offset = index # @TODO FIX!!
+                membrane.system_state_offset = index
                 index += len(tmp)
                 membrane.N = self.N
 
@@ -284,6 +284,7 @@ class CSDModel(object):
         """
         Ordering: Concentrations: internal vars
         """
+
         temp = np.zeros(self._N_internal_object+self._N_volumefraction)
         for (key, length, index) in self.internalVars:
             temp[index:(index+length)] = key.getInternalVars()
@@ -311,7 +312,12 @@ class CSDModel(object):
         return self.volfrac[compartment]
 
     def volumefractions(self,system_state=None):
-        vfrac = {}
+        '''
+        Returns a dictionary of the volume fractions
+        :param system_state:
+        :return: dict
+        '''
+        vfrac = customdict(float)
         if system_state is None:
             return self.volfrac
         for j in xrange(self.numcompartments-1):

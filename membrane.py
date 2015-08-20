@@ -79,6 +79,7 @@ class Membrane(Coupling):
     def get_dot_InternalVars(self,system_state = None,t = None):
         """
         InternalVars are the membrane potentials, and the ion variables
+        Return dot currents, single cell fluxes, single cell currents
         """
         V_m = self.phi(system_state)
         invalues = self.inside.get_val_dict(system_state)

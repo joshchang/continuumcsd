@@ -40,6 +40,7 @@ class Compartment(object):
         self.minvolume = minvolume
         self.maxvolume = maxvolume
         self.onedimension = False
+        self.density = 1 # normalization density for computing fluxes ecs is 1. otherwise, it is the number density
 
     def __str__(self):
         return self.name

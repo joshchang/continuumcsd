@@ -85,8 +85,10 @@ class CSDModelInterval(CSDModel):
                 inside_t = key.inside.tonicity(system_state, invalues = concentrations[key.inside])
                 outside_t = key.outside.tonicity(system_state, invalues = concentrations[key.outside])
 
-                compartmentfluxes[key.outside].update(flux)
-                compartmentfluxes[key.inside].update(scalar_mult_dict(flux, -1.0))
+
+
+                compartmentfluxes[key.outside].update(scalar_mult_dict(flux,key.inside.density)) # The flux is per cell
+                compartmentfluxes[key.inside].update(scalar_mult_dict(flux,-key.inside.density)) # inside updates on a per-cell basis
                 wf = key.waterFlow(system_state, tonicity = inside_t - outside_t)
                 # No waterflow into compartment if it is too full
                 # No waterflow out of compartment if it is too empty

@@ -35,6 +35,7 @@ Ki0 = 133.5e-3 #M
 phi0 = -70e-3 #V
 Cae0 = 1e-3
 Cle0 = Ke0+Nae0+2*Cae0
+ge0 = 4e-6 #M http://www.jneurosci.org/content/27/36/9736.full
 
 Cli0 = exp(phi0/phi)*Cle0
 A0 = Ki0+Nai0-Cli0 # Electroneutrality and isotonicity
