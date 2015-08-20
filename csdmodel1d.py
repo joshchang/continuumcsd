@@ -53,6 +53,8 @@ class CSDModelInterval(CSDModel):
 
     def assembleSystem(self):
         super(CSDModelInterval, self).assembleSystem()
+        for compartment in self.compartments:
+            compartment.onedimension = True
         # 1D???
 
     def ode_rhs(self, t, system_state, debug = False):

@@ -39,6 +39,7 @@ class Compartment(object):
         self.N = 1
         self.minvolume = minvolume
         self.maxvolume = maxvolume
+        self.onedimension = False
 
     def __str__(self):
         return self.name
@@ -139,7 +140,7 @@ class Compartment(object):
                 volumeterm = dotvolumefraction * concentration
                 diffusionterm = 0
                 electrodiffusion = 0
-                if dx > 0 and self.diffusive:
+                if self.onedimension and dx > 0 and self.diffusive:
                     # Add diffusion somehow...
                     dconc = np.zeros(self.N)
                     dconc[1:-1] = (concentration[2:] - concentration[:-2]) / dx

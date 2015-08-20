@@ -19,7 +19,7 @@ class NaTChannel(GHKChannel):
     species = [Na]
     p = 3
     q = 1
-    max_permeability = np.array([1.75e-12])
+    max_permeability = np.array([1.7e-12])
 
     def alpham(self, V_m):
         return -320.0*(V_m*1000+51.9)/(exp(-.25*(V_m*1000+51.9))-1.0+1e-17)
@@ -37,7 +37,7 @@ class NaPChannel(GHKChannel):
     species = [Na]
     p = 2
     q = 1
-    max_permeability = np.array([6.0e-12])
+    max_permeability = np.array([7.0e-12])
 
     def alpham(self, V_m):
         '''
@@ -62,17 +62,17 @@ class KDRChannel(GHKChannel):
     species = [K]
     p = 2
     q = 0
-    max_permeability = np.array([1.75e-11])
+    max_permeability = np.array([3.5e-12])
 
     def alpham(self, V_m):
         return -16.0 *(V_m*1000+34.9)/(exp(-0.2*(V_m*1000+34.9))-1.0)
 
     def betam(self, V_m):
-        return 250 * exp(-(250.0 * V_m + 1.25))
+        return 250 * exp(-(25.0 * V_m + 1.25))
 
 class KAChannel(GHKChannel):
     species = [K]
-    max_permeability = np.array([2.5e-12])  # permeability
+    max_permeability = np.array([3.4e-11])  # permeability
     p = 2
     q = 1
 
@@ -94,24 +94,24 @@ class NMDAChannel(GHKChannel):
     q = 1
     # name = 'GLutamate-independent NMDA channel'
     species = [Na, K, Ca]
-    max_permeability = np.array([2, 2, 20]) * 1e-12
+    max_permeability = np.array([2, 2, 20]) * 3.4e-10
 
     def alpham(self, V_m):
-        return 0.5 / (1 + exp((13.5e-3 - self.membrane.outside.value(K)) / 1.42e-3))
+        return 500. / (1 + exp((13.5e-3 - self.membrane.outside.value(K)) / 1.42e-3))
 
     def betam(self, V_m):
-        return 0.5 - self.alpham(V_m)
+        return 0.0
 
     def alphah(self, V_m):
-        return power(2.0e3 * (1.0 + exp((self.membrane.outside.value(K) - 6.75e-3) / 0.71e-3)), -1)
+        return 0.5*power((1.0 + exp((self.membrane.outside.value(K) - 6.75e-3) / 0.71e-3)), -1)
 
     def betah(self, V_m):
-        return 5e-4 - self.alphah(V_m)
+        return 0.0
 
 
 class NaKATPasePump(Channel):
     species = [K, Na]
-    Imax = np.array([-2.0, 3.0]) * 1e-6  # 2K per 3Na Amperes
+    Imax = np.array([-2.0, 3.0]) * 3e-10  # 2K per 3Na Amperes
 
     def current(self, system_state=None, V_m=None, invalues=None, outvalues=None):
         Ke = self.membrane.outside.value(K,system_state) if outvalues is None else outvalues[K]
@@ -255,12 +255,22 @@ class gNMDAChannel(NMDAChannel):
         if self.Popen is not None and not isinstance(self.Popen, collections.Sequence):
             self.Popen = np.ones(self.N) * self.Popen
 
+    def equilibriate(self, V_m=None, system_state = None):
+        self.m = np.ones(self.N)
+        self.h = np.ones(self.N)
+        g = self.membrane.outside.value(Glu, system_state)
+        self.Popen =self.r1*g/(self.r1+g+self.r2)
+
+    def current_infty(self, system_state=None):
+        old = super(NMDAChannel,self).current_infty(system_state)
+        g = self.membrane.outside.value(Glu, system_state)
+        return old*self.r1*g/(self.r1+g+self.r2)
 
 class KDRglialChannel(GHKChannel):
     p = 4
     q = 0
     species = [K]
-    max_permeability = [1e-12]
+    max_permeability = [4e-12]
 
     def alpham(self, V_m):
         scaletaun = 1.5
@@ -335,8 +345,8 @@ class AquaPorin(Channel):
     species = []
     gmax = []
 
-    def water_max_permeability(self, system_state=None):
-        return 1.0
+    def water_permeability(self, system_state=None):
+        return np.ones(self.N)
 
     def current(self,system_state=None, V_m=None, invalues = None, outvalues = None):
         return defaultdict(float)
