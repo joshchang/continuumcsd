@@ -153,7 +153,6 @@ class Compartment(object):
                     dvolumefraction[1:-1] = (volumefraction[2:] - volumefraction[:-2]) / dx
                     dvolumefraction[0] = (volumefraction[1] - volumefraction[0]) / dx
                     dvolumefraction[-1] = (volumefraction[-1] - volumefraction[-2]) / dx
-                    # np.gradient(volumefraction,dx,edge_order=2)
                     diffusionterm = self.diffusivities[key] * volumefraction * ddconc + self.diffusivities[
                                                                                             key] * dvolumefraction * dconc
                     phi = self.phi(system_state)

@@ -266,9 +266,6 @@ class CSDModel(object):
             elif type(key) is not Compartment and type(key) is not CellCompartment:
                 temp[index:(index+length)] = key.get_dot_InternalVars(system_state,t)
 
-        #for key, val in compartmentfluxes.items():
-        #    compartmentfluxes[key] = scalar_mult_dict(compartmentfluxes[key] , 1.0/self.volumefraction(key,system_state))
-
         for (key, length, index) in self.internalVars:
             if type(key) is Compartment or type(key) is CellCompartment:
                 temp[index:(index+length)] = key.get_dot_InternalVars(system_state,compartmentfluxes[key],t)
@@ -284,12 +281,13 @@ class CSDModel(object):
         """
         Ordering: Concentrations: internal vars
         """
+        vfrac = self.volumefractions()
 
         temp = np.zeros(self._N_internal_object+self._N_volumefraction)
         for (key, length, index) in self.internalVars:
             temp[index:(index+length)] = key.getInternalVars()
         for j in xrange(self.numcompartments-1):
-            temp[(self._N_internal_object+j*self.N):(self._N_internal_object+(j+1)*self.N)] = self.volumefraction(self.compartments[j])
+            temp[(self._N_internal_object+j*self.N):(self._N_internal_object+(j+1)*self.N)] = vfrac[self.compartments[j]]
         return temp
 
     def ode_jacobian(self,t,system_state):
@@ -299,17 +297,6 @@ class CSDModel(object):
         as well as improve the situation wrt numerical instabilities
         """
         pass
-
-    def volumefraction(self,compartment,system_state=None): #@TODO
-        if system_state is not None:
-            # compute the offset in the system_state vector for when volume fractions are stored
-            # find out which compartment is indexed
-            index = self.compartments.index(compartment)
-            if index < len(self.compartments):
-                pass
-            else:
-                pass
-        return self.volfrac[compartment]
 
     def volumefractions(self,system_state=None):
         '''
@@ -356,3 +343,8 @@ class CSDModel(object):
         '''
         pass
 
+class BoundaryConditions(object):
+    NEUMANN = 1
+    DIRICHLET = 2
+    def __init__(self):
+        pass

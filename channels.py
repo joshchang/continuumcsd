@@ -13,7 +13,7 @@ import numpy as np
 import math
 from channel import *
 import collections
-from collections import defaultdict
+from customdict import *
 
 class NaTChannel(GHKChannel):
     species = [Na]
@@ -48,7 +48,7 @@ class NaPChannel(GHKChannel):
         return 1000*pow(6.0 * (1 + exp(-(143 * V_m + 5.67))), -1)
 
     def betam(self, V_m):
-        return 1000.0/6.0*(1.0-1./(1+exp(-(143*V_m+5.67))))
+        return 1000.0/6.0*(1.0+exp(143*V_m+5.67))
 
     def alphah(self, V_m):
         return 5.12e-8 * 1000 *exp(-(56*V_m+2.94))
@@ -94,7 +94,7 @@ class NMDAChannel(GHKChannel):
     q = 1
     # name = 'GLutamate-independent NMDA channel'
     species = [Na, K, Ca]
-    max_permeability = np.array([2, 2, 20]) * 3.4e-10
+    max_permeability = np.array([1, 1, 20]) * 3.4e-12
 
     def alpham(self, V_m):
         return 500. / (1 + exp((13.5e-3 - self.membrane.outside.value(K)) / 1.42e-3))
@@ -199,17 +199,18 @@ class NonSpecificChlorideChannel(Channel):
         return self.current(V_m)
 
 
-class KIRChannel(Channel):
+class KIRChannel(GHKChannel):
     species = [K]
-    gmax = 2.0e-15
+    max_permeability = 2.0e-15
 
-    def current(self, system_state=None, V_m = None, invalues=None, outvalues=None):
+    def permeability(self, system_state=None, V_m = None, invalues=None, outvalues=None):
         if V_m is None: V_m = self.membrane.phi(system_state)
         Ke = outvalues[K] if outvalues is not None else self.membrane.outside.value(K,system_state)
         Ki = invalues[K]  if invalues is not None else self.membrane.inside.value(K,system_state)
         E_K = phi / K.z * (np.log(Ke) - np.log(Ki))
-        return {K: self.gmax*(V_m-E_K)/sqrt(Ke*1e3)/(1.0+exp(1000*(V_m-E_K))) }
-        #return {K: self.gmax*(V_m-E_K)/sqrt(Ke*1e3)/np.where( V_m<E_K, (1.0+exp(1000*(V_m-E_K))), (1.0+exp(-1000*(V_m-E_K)))/ exp(-1000*(V_m-E_K)))}
+        outdict = customdict(float)
+        outdict[K] = self.gmax*(V_m-E_K)/sqrt(Ke*1e3)/(1.0+exp(1000*(V_m-E_K)))
+        return outdict
 
     def current_infty(self, V_m):
         return self.current(V_m)
@@ -219,8 +220,8 @@ class gNMDAChannel(NMDAChannel):
     """
     Glutamate-dependent NMDA Channel
     """
-    r1 = 0.072
-    r2 = 6.6
+    r1 = 0.072 # 72 /mM/s
+    r2 = 6.6 # 6.6/s
     Popen = 0
     # name = 'Glutamate-dependent NMDA Channel'
 
@@ -256,21 +257,20 @@ class gNMDAChannel(NMDAChannel):
             self.Popen = np.ones(self.N) * self.Popen
 
     def equilibriate(self, V_m=None, system_state = None):
-        self.m = np.ones(self.N)
-        self.h = np.ones(self.N)
+        super(NMDAChannel, self).equilibriate(V_m)
         g = self.membrane.outside.value(Glu, system_state)
         self.Popen =self.r1*g/(self.r1+g+self.r2)
 
-    def current_infty(self, system_state=None):
-        old = super(NMDAChannel,self).current_infty(system_state)
+    def permeability_infty(self, system_state=None, V_m = None):
+        voltagegating = super(NMDAChannel,self).permeability_infty(system_state,V_m)  # returns a dictionary
         g = self.membrane.outside.value(Glu, system_state)
-        return old*self.r1*g/(self.r1+g+self.r2)
+        return scalar_mult_dict(voltagegating,*self.r1*g/(self.r1+g+self.r2))
 
 class KDRglialChannel(GHKChannel):
     p = 4
     q = 0
     species = [K]
-    max_permeability = [4e-12]
+    max_permeability = np.array([3.5e-12])
 
     def alpham(self, V_m):
         scaletaun = 1.5
@@ -320,13 +320,15 @@ class CaNChannel(GHKChannel):
     def betam(self,V_m,system_state=None):
         return power( 1.0+exp( (self.V_h-V_m)/self.kappa) ,-1)/self.tau-1.0/self.tau
 
-class KSKChannel(Channel):
+class SKChannel(GHKChannel):
     # https://senselab.med.yale.edu/ModelDB/ShowModel.cshtml?model=113446&file=%5cNEURON-2008b%5csk.mod
-    gmax = 2e-11
+    max_permeability = 4e-10
+    p = 0
+    q = 0
     species = [K]
-    def current(self, system_state=None,V_m=None, invalues = None, outvalues = None):
+    def permeability(self, system_state=None, V_m = None, invalues=None, outvalues=None):
         Cai = self.membrane.inside.value(Ca,system_state) if invalues is None else invalues[Ca]
-        return {K: self.gmax/(1+power(3e-7/Cai,4.7) ) }
+        return {K: self.max_permeability/(1+power(3e-7/Cai,4.7) ) }
 
 class HoleChannel(Channel):
     def current(self, system_state=None, V_m=None, invalues = None, outvalues = None):

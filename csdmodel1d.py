@@ -85,20 +85,22 @@ class CSDModelInterval(CSDModel):
                 inside_t = key.inside.tonicity(system_state, invalues = concentrations[key.inside])
                 outside_t = key.outside.tonicity(system_state, invalues = concentrations[key.outside])
 
+                compartmentfluxes[key.outside].update(scalar_mult_dict(flux,key.inside.density*key.outside.density)) # The flux is per cell
+                compartmentfluxes[key.inside].update(scalar_mult_dict(flux,-key.inside.density*key.outside.density)) # inside updates on a per-cell basis
+                wf = key.waterFlow(system_state, tonicity = outside_t-inside_t)*key.inside.density*key.outside.density # per-cell waterflow times compartment densities
+                '''
+                Compute the water flows here. If compartment is over maxvolume, don't let it get bigger
+                If a compartment is below minvolume don't let it get smaller
+                '''
+                out_small = 1-(volumefractions[key.outside]<=key.outside.minvolume) #outside too small
+                out_big = 1-(volumefractions[key.outside]>=key.outside.maxvolume) #outside too big
+                in_small = 1-(volumefractions[key.inside]<=key.inside.minvolume) # inside too small
+                in_big = 1-(volumefractions[key.inside]>=key.inside.maxvolume) # inside too big
 
+                have_flow = out_small*out_big*in_small*in_big # need all conditions to be satisfied
 
-                compartmentfluxes[key.outside].update(scalar_mult_dict(flux,key.inside.density)) # The flux is per cell
-                compartmentfluxes[key.inside].update(scalar_mult_dict(flux,-key.inside.density)) # inside updates on a per-cell basis
-                wf = key.waterFlow(system_state, tonicity = inside_t - outside_t)
-                # No waterflow into compartment if it is too full
-                # No waterflow out of compartment if it is too empty
-                condition1 = (volumefractions[key.outside]<=key.outside.minvolume)
-                condition2 = (volumefractions[key.outside]>=key.outside.maxvolume)
-                condition3 = (volumefractions[key.inside]<=key.inside.minvolume)
-                condition4 = (volumefractions[key.inside]>=key.inside.maxvolume)
-                condition = wf > 0
-                waterflows[key.outside] += condition1*condition4*condition*wf + condition2*condition3*(1-condition)*wf
-                waterflows[key.inside] -= condition1*condition4*condition*wf - condition1*condition3*(1-condition)*wf
+                waterflows[key.outside] += wf*have_flow
+                waterflows[key.inside] -= wf*have_flow
 
             elif type(key) is Reaction:
                 flux = key.flux(system_state)
@@ -109,7 +111,6 @@ class CSDModelInterval(CSDModel):
                     temp[index:(index + length)] = key.get_dot_InternalVars(system_state, t)
                 except:
                     print(key.name)
-
 
         for (key, length, index) in self.internalVars:
             if issubclass(type(key), Compartment):
@@ -128,6 +129,6 @@ class CSDModelInterval(CSDModel):
         for j in xrange(self.numcompartments - 1):
             temp[(self._N_internal_object + j * self.N):(self._N_internal_object + (j + 1) * self.N)] = waterflows[self.compartments[j]]
 
-        if debug: return temp, compartmentfluxes
+        if debug: return temp, compartmentfluxes, waterflows
         return temp
 

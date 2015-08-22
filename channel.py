@@ -72,34 +72,32 @@ class GHKChannel(Channel):
     q = 0
     max_permeability = None
 
-    def current(self, system_state=None, V_m = None, invalues=None, outvalues=None):
+    def current(self, system_state=None, V_m = None, invalues=None, outvalues=None): #@TODO: FIX FOR non-standard channels
         if V_m is None: V_m = self.membrane.phi(system_state)
-        h = self.get_h(system_state)
-        m = self.get_m(system_state)
         if invalues is None: invalues = self.membrane.inside.get_val_dict(system_state)
         if outvalues is None: outvalues = self.membrane.outside.get_val_dict(system_state)
-        gating = power(m, self.p) * power(h, self.q)
+
+        permeability = self.permeability(system_state,V_m, invalues, outvalues)
 
         # For safety, but SLOW!!!
         if not hasattr(V_m, '__iter__'):
             # V_m is not iterable, use ternary operator
 
-
-            I = [permeability * gating * F * species.z * species.z * V_m / phi \
+            I = [permeability[species]  * F * species.z * species.z * V_m / phi \
                  * ((invalues[species] - exp(-V_m * species.z / phi) * outvalues[species]) / (
                 1.0 - exp(-V_m * species.z / phi)) \
                         if V_m * species.z > 0 else \
                         (invalues[species] * exp(V_m * species.z / phi) - outvalues[species]) / (
                             exp(V_m * species.z / phi) - 1.0)) \
-                 for permeability, species in zip(self.max_permeability, self.species)]
+                 for species in self.species]
         else:
 
             I = [
-                permeability * gating * F * species.z * species.z * V_m / phi * ((invalues[species] - exp(-V_m * species.z / phi) * outvalues[species]) / (
+                permeability[species]* F * species.z * species.z * V_m / phi * ((invalues[species] - exp(-V_m * species.z / phi) * outvalues[species]) / (
                     1.0 - exp(-V_m * species.z / phi)) if species.z < 0 else \
                                      (invalues[species] * exp(V_m * species.z / phi) - outvalues[species]) / (
                                          exp(V_m * species.z / phi) - 1.0)) \
-                for permeability, species in zip(self.max_permeability, self.species)
+                for species in self.species
                 ]
 
         return {ion: current for ion, current in zip(self.species, I)}
@@ -137,43 +135,10 @@ class GHKChannel(Channel):
 
     def permeability(self, system_state=None, V_m = None, invalues=None, outvalues=None):
         if V_m is None: V_m = self.membrane.phi(system_state)
-        h = self.get_h(system_state)
-        m = self.get_m(system_state)
+        h = self.get_h(system_state) if self.q>0 else 1.0
+        m = self.get_m(system_state) if self.p>0 else 1.0
         gate = power(m, self.p) * power(h, self.q)
         return {ion: permeability * gate for permeability, ion in zip(self.max_permeability, self.species)}
-
-    def dIdV(self, system_state=None):
-        """
-        For constructing a Jacobian. This is the change in the total current
-        through the membrane
-        """
-        V_m = self.membrane.phi(system_state)
-        h = self.h(system_state)
-        m = self.m(system_state)
-        invalues = self.membrane.inside.get_val_dict(system_state)
-        outvalues = self.membrane.outside.get_val_dict(system_state)
-
-        dIdV = [permability * F * species.z * (V_m * outvalues[species] * species.z * (exp(V_m * species.z / phi) - 1.0) + \
-                                    V_m * species.z * (
-                                        outvalues[species] - invalues[species] * exp(V_m * species.z / phi)) - \
-                                    phi * (outvalues[species] - invalues[species] * exp(V_m * species.z / phi)) * (
-                                        exp(V_m * species.z / phi) - 1.0)) \
-                / (phi ** 2 * power(exp(V_m * species.z / phi) - 1.0, 2))
-                for permeability, species in zip(self.max_permeability, self.species)]
-        return power(m, self.p) * power(h, self.q) * F * sum(dIdV)
-
-    def dIdm(self, system_state=None):
-        if self.p == 0: return 0.0
-
-    def dIdh(self, system_state=None):
-        if self.q == 0: return 0.0
-
-    def dmdV(self, system_state=None):
-        m = self.get_m(system_state)
-        return self.dalphadV(m, system_state)
-
-    def dhdV(self, system_state=None):
-        pass
 
     def permeability_infty(self, system_state=None, V_m = None):
         if V_m is None: V_m = self.membrane.phi(system_state)
@@ -187,40 +152,33 @@ class GHKChannel(Channel):
         gate = power(m_infty, self.p) * power(h_infty, self.q)
         return {ion: permeability * gate for permeability, ion in zip(self.max_permeability, self.species)}
 
-    def current_infty(self, system_state=None):
+    def current_infty(self, system_state=None, V_m = None, invalues = None, outvalues = None):
         """
         This is the current when the gates have equilibriated to V_m, and the
         given intra- and extra- cellular concentrations
         invalues and outvalues are dicts taken species are arguments
         """
-        V_m = self.membrane.phi(system_state)
-        invalues = self.membrane.inside.get_val_dict(system_state)
-        outvalues = self.membrane.outside.get_val_dict(system_state)
+        if V_m is None: V_m = self.membrane.phi(system_state)
+        if invalues is None: invalues = self.membrane.inside.get_val_dict(system_state)
+        if outvalues is None: outvalues = self.membrane.outside.get_val_dict(system_state)
 
-        alpham = self.alpham(V_m)
-        betam = self.betam(V_m)
-        alphah = self.alphah(V_m)
-        betah = self.betah(V_m)
-        m_infty = alpham / (alpham + betam)
-        h_infty = alphah / (alphah + betah)
-
-        gating = power(m_infty, self.p) * power(h_infty, self.q)
+        permeability = self.permeability_infty(system_state, V_m)
         # Maybe let's not compute this multiple times, once for each channel!
         if not hasattr(V_m, '__iter__'):
             # V_m is not iterable, use ternary operator
-            I = [ permeability * gating * F * species.z * species.z * V_m / phi \
+            I = [ permeability[species] * F * species.z * species.z * V_m / phi \
                  * ((invalues[species] - exp(-V_m * species.z / phi) * outvalues[species]) / (1.0 - exp(-V_m * species.z / phi)) \
                         if V_m * species.z > 0 else \
                         (invalues[species] * exp(V_m * species.z / phi) - outvalues[species]) / (exp(V_m * species.z / phi) - 1.0)) \
-                 for permeability, species in zip(self.max_permeability, self.species)]
+                 for species in self.species]
         else:
             I = [
-                permeability * gating * F * species.z * species.z * V_m / phi \
+                permeability[species] * F * species.z * species.z * V_m / phi \
                     * ((invalues[species] - exp(-V_m * species.z / phi) * outvalues[species]) / (
                     1.0 - exp(-V_m * species.z / phi)) if species.z < 0 else \
                                      (invalues[species] * exp(V_m * species.z / phi) - outvalues[species]) / (
                                          exp(V_m * species.z / phi) - 1.0)) \
-                for permeability, species in zip(self.max_permeability, self.species)
+                for species in self.species
                 ]
 
         return {ion: current for ion, current in zip(self.species, I)}

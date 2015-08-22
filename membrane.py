@@ -203,12 +203,14 @@ class Membrane(Coupling):
         # These fluxes are per total volume and not yet adjusted for volume fraction
         """
         currents = self.currents(system_state=system_state)
-        fluxes = {key: current/F/key.z*self.inside.density for key, current in currents.iteritems() }
+        fluxes = {key: current/F/key.z for key, current in currents.iteritems() }
         return fluxes
 
     def waterFlow(self,system_state = None, V_m = None, invalues = None, outvalues = None, tonicity = None):
         """
         Compute rate of water flow through the channel in units L/s
+        Tonicity is out - in
+        waterFlow is positive if out>in
         """
 
         totalpermeability = sum([channel.water_permeability(system_state)*self.channeldensity[channel] for channel in self.channels])
@@ -218,7 +220,7 @@ class Membrane(Coupling):
         inside_t = self.inside.tonicity(system_state, invalues)
         outside_t = self.outside.tonicity(system_state, outvalues)
 
-        return totalpermeability*(inside_t-outside_t)  # flow from in to out
+        return totalpermeability*(outside_t-inside_t)  # flow from in to out
 
     def currents_and_fluxes(self, system_state = None):
         """
