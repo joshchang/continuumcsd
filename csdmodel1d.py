@@ -79,9 +79,15 @@ class CSDModelInterval(CSDModel):
 
         concentrations = {compartment: compartment.get_val_dict(system_state) for compartment in self.compartments}
 
+        membranecurrents = customdict(float)
+        membranefluxes = customdict(float)
+
         for (key, length, index) in self.internalVars:
             if type(key) is Membrane:
                 (temp[index:(index + length)], flux, current) = key.get_dot_InternalVars(system_state, t) # output ydot, ion flux, current
+                membranecurrents[key] = current
+                membranefluxes[key] = flux
+
                 inside_t = key.inside.tonicity(system_state, invalues = concentrations[key.inside])
                 outside_t = key.outside.tonicity(system_state, invalues = concentrations[key.outside])
 
@@ -102,7 +108,9 @@ class CSDModelInterval(CSDModel):
                 waterflows[key.outside] += wf*have_flow
                 waterflows[key.inside] -= wf*have_flow
 
-            elif type(key) is Reaction:
+            elif issubclass(type(key), Reaction):
+                if type(key) is MembraneReaction:
+                    flux = key.flux(system_state,membranecurrents[key.membrane])
                 flux = key.flux(system_state)
                 compartmentfluxes[key.compartment].update(flux)
 

@@ -140,7 +140,7 @@ class GHKChannel(Channel):
         gate = power(m, self.p) * power(h, self.q)
         return {ion: permeability * gate for permeability, ion in zip(self.max_permeability, self.species)}
 
-    def permeability_infty(self, system_state=None, V_m = None):
+    def permeability_infty(self, system_state=None, V_m = None, invalues=None, outvalues=None):
         if V_m is None: V_m = self.membrane.phi(system_state)
 
         alpham = self.alpham(V_m)
@@ -297,6 +297,9 @@ class LeakChannel(GHKChannel):
 
     def permeability(self, system_state=None, V_m = None, invalues=None, outvalues=None):
         return {self.species[0] : np.ones(self.N)*self.max_permeability[0] }
+
+    def permeability_infty(self, system_state=None, V_m = None, invalues=None, outvalues=None):
+        return self.permeability(system_state=system_state, V_m = V_m, invalues=invalues, outvalues=outvalues)
 
     def set_permeability(self, permeability):
         self.max_permeability = [permeability]

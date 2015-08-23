@@ -16,12 +16,39 @@ class Reaction(object):
     """
     species = ()
     system_state_offset = 0
-    state = None
-    compartment = None
     N = 1
     def __init__(self,name):
         pass
-    def flux(self):
+    def flux(self,system_state = None):
+        pass
+
+class MembraneReaction(Reaction):
+    """
+    Membrane reactions can modify concentrations on both sides of the membrane
+    These do not contributed to the charging of the membrane. The fluxes are conservative, meaning
+    that a change on one side of the membrane is balanced by an equal and opposite change on the other side
+    of a membrane. Compartment reactions on the other hand need-not be conservative. The flux computed
+    is per unit cell.
+    """
+    membrane = None
+    def __init__(self,name,membrane):
+        self.membrane = membrane
+        self.name = name
+    def flux(self,system_state=None, currents = None):
+        pass
+
+class CompartmentReaction(Reaction):
+    """
+    These are reactions that occur within a single compartment. They need not be conservative. The reactions take
+    the form
+    d(v*X/dt) = J, to account for volume variations in the reactions
+    The flux computed is per unit cell.
+    """
+    compartment = None
+    def __init__(self,name,membrane):
+        self.membrane = membrane
+        self.name = name
+    def flux(self,system_state=None, invalues = None):
         pass
 
 class Buffer(Reaction):

@@ -31,13 +31,18 @@ Ag = Ag_cm*1e-4 # squared meters
 Ke0 = 3.5e-3
 Nae0 = 140e-3
 Nai0 = 10e-3 # M
+Nag0 = 30e-3
 Ki0 = 133.5e-3 #M
+Kg0 = 113.5e-3 # Kager 2009
 phi0 = -70e-3 #V
+phig0 = -85e-3
 Cae0 = 1e-3
 Cle0 = Ke0+Nae0+2*Cae0
 ge0 = 4e-6 #M http://www.jneurosci.org/content/27/36/9736.full
 
 Cli0 = exp(phi0/phi)*Cle0
+Clg0 = exp(phig0/phi)*Cle0
 A0 = Ki0+Nai0-Cli0 # Electroneutrality and isotonicity
 
-Cai0 = 1e-9
+Cai0 = 50e-9
+Cag0 = 50e-9

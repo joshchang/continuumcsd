@@ -180,8 +180,9 @@ class PMCAPump(Channel):
         Cai = invalues[Ca] if invalues is not None else self.membrane.inside.value(Ca,system_state)
         return {Ca: self.gmax / (1 + power(KPMCA / Cai, h))}
 
-class NonSpecificChlorideChannel(Channel):
-    gmax = 2e-11
+
+class NonSpecificChlorideChannel(GHKChannel):
+    max_permeability = 2e-11
     species = [Cl]
     V_m = -0.07
 
@@ -189,14 +190,13 @@ class NonSpecificChlorideChannel(Channel):
         if V_m is not None:
             self.V_m = V_m
 
-    def current(self, system_state=None, V_m = None, invalues = None, outvalues = None):
-        if V_m is None: V_m = self.membrane.phi(system_state)
-        Cli = invalues[Cl] if invalues is not None else self.membrane.inside.value(Cl,system_state)
-        Cle = outvalues[Cl] if outvalues is not None else self.membrane.outside.value(Cl,system_state)
-        return {Cl: self.gmax * (V_m - phi / Cl.z * (np.log(Cle) - np.log(Cli)))}
+    def permeability(self, system_state=None, V_m = None, invalues=None, outvalues=None):
+        outdict = customdict(float)
+        outdict[Cl] = self.max_permeability
+        return outdict
 
-    def current_infty(self, V_m):
-        return self.current(V_m)
+    def permeability_infty(self, system_state=None, V_m = None, invalues=None, outvalues=None):
+        return self.permeability(system_state=None, V_m = None, invalues=None, outvalues=None)
 
 
 class KIRChannel(GHKChannel):
@@ -209,11 +209,11 @@ class KIRChannel(GHKChannel):
         Ki = invalues[K]  if invalues is not None else self.membrane.inside.value(K,system_state)
         E_K = phi / K.z * (np.log(Ke) - np.log(Ki))
         outdict = customdict(float)
-        outdict[K] = self.gmax*(V_m-E_K)/sqrt(Ke*1e3)/(1.0+exp(1000*(V_m-E_K)))
+        outdict[K] = self.max_permeability/sqrt(Ke/3.5e-3)/(1.0+exp(1000*(V_m-E_K)))
         return outdict
 
-    def current_infty(self, V_m):
-        return self.current(V_m)
+    def permeability_infty(self, system_state=None, V_m = None, invalues=None, outvalues=None):
+        return self.permeability(system_state, V_m, invalues, outvalues)
 
 
 class gNMDAChannel(NMDAChannel):
@@ -247,8 +247,8 @@ class gNMDAChannel(NMDAChannel):
         super(NMDAChannel, self).setInternalVars(system_state)
         self.Popen = self.get_Popen(system_state)
 
-    def current(self, system_state=None, V_m=None, invalues = None, outvalues = None):
-        old = super(NMDAChannel, self).current(system_state)  # this is a dict
+    def permeability(self, system_state=None, V_m = None, invalues=None, outvalues=None):
+        old = super(NMDAChannel, self).permeability(system_state)  # this is a dict
         return scalar_mult_dict(old, self.get_Popen(system_state))
 
     def vectorizevalues(self):
@@ -266,6 +266,7 @@ class gNMDAChannel(NMDAChannel):
         g = self.membrane.outside.value(Glu, system_state)
         return scalar_mult_dict(voltagegating,*self.r1*g/(self.r1+g+self.r2))
 
+
 class KDRglialChannel(GHKChannel):
     p = 4
     q = 0
@@ -282,6 +283,7 @@ class KDRglialChannel(GHKChannel):
         shiftn = 0.05
         return scaletaun * 250.0 * exp((.02 - V_m - 0.07) / 0.04)
 
+
 class CaLChannel(GHKChannel):
     #Somjen channel: https://senselab.med.yale.edu/ModelDB/ShowModel.cshtml?model=113446&file=%5cNEURON-2008b%5ccal2.mod
     species = [Ca]
@@ -293,9 +295,10 @@ class CaLChannel(GHKChannel):
     def betam(self, V_m, system_state = None):
         return 333.333*0.29/exp((1000*V_m+10)/10.86)
 
+
 class CaPChannel(GHKChannel):
     species = [Ca]
-    max_permeability = np.array([4e-10])
+    max_permeability = np.array([4e-12])
     p = 1
     q = 1
     def alphah(self, V_m, system_state = None):
@@ -307,9 +310,10 @@ class CaPChannel(GHKChannel):
     def betam(self, V_m, system_state=None):
         return 35000.0/(1+exp((1000*V_m+74)/14.5))
 
+
 class CaNChannel(GHKChannel):
     species = [Ca]
-    max_permeability = np.array([4e-10])
+    max_permeability = np.array([4e-12])
     tau = 1e-3
     V_h = -4.0e-3
     kappa = 6.3e-3
@@ -320,15 +324,20 @@ class CaNChannel(GHKChannel):
     def betam(self,V_m,system_state=None):
         return power( 1.0+exp( (self.V_h-V_m)/self.kappa) ,-1)/self.tau-1.0/self.tau
 
+
 class SKChannel(GHKChannel):
     # https://senselab.med.yale.edu/ModelDB/ShowModel.cshtml?model=113446&file=%5cNEURON-2008b%5csk.mod
-    max_permeability = 4e-10
+    max_permeability = 4e-12
     p = 0
     q = 0
     species = [K]
     def permeability(self, system_state=None, V_m = None, invalues=None, outvalues=None):
         Cai = self.membrane.inside.value(Ca,system_state) if invalues is None else invalues[Ca]
         return {K: self.max_permeability/(1+power(3e-7/Cai,4.7) ) }
+
+    def permeability_infty(self, system_state=None, V_m = None, invalues = None, outvalues = None):
+        return self.permeability(self, system_state, V_m, invalues, outvalues)
+
 
 class HoleChannel(Channel):
     def current(self, system_state=None, V_m=None, invalues = None, outvalues = None):

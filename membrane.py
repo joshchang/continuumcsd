@@ -198,7 +198,7 @@ class Membrane(Coupling):
         return counter
 
 
-    def fluxes(self, system_state = None):
+    def fluxes(self, system_state = None, V_m = None, invalues = None, outvalues = None):
         """ Compute the instantaneous fluxes through the membrane
         # These fluxes are per total volume and not yet adjusted for volume fraction
         """

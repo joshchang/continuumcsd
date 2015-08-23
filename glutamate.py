@@ -10,12 +10,16 @@ from compartment import *
 from membrane import *
 import numpy as np
 
-class GlutmateExocytosis(Reaction):
+class GlutmateExocytosis(MembraneReaction):
     species = [Glu]
     a1 = 5e-5
     a2 = 5e-6
     a3 = 850 # s^{-1}
     membrane = None
+
+    def __init__(self,name,membrane,Nrel):
+        super(self,MembraneReaction).__init__(name,membrane)
+        self.Nrel = Nrel
 
     def get_Internal_vars(self):
         pass
@@ -33,7 +37,7 @@ class GlutmateExocytosis(Reaction):
         CaiHill = np.power(Cai,4.0)
         KnHIll = power(20e-6,4)
         Prel = CaiHill/(CaiHill+KnHIll)
-        return {Ca: Prel*glu*ICa}
+        return {Glu: Prel*glu*ICa*Nrel}
 
 class GlutamatePackaging(Reaction):
     species = [Glu]
