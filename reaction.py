@@ -34,7 +34,10 @@ class MembraneReaction(Reaction):
     def __init__(self,name,membrane):
         self.membrane = membrane
         self.name = name
-    def flux(self,system_state=None, currents = None):
+
+    def flux(self, system_state, volfractions=None, invalues=None, outvalues=None):
+        """
+        """
         pass
 
 class CompartmentReaction(Reaction):
@@ -45,47 +48,27 @@ class CompartmentReaction(Reaction):
     The flux computed is per unit cell.
     """
     compartment = None
-    def __init__(self,name,membrane):
-        self.membrane = membrane
+
+    def __init__(self, name, compartment):
+        self.membrane = compartment
         self.name = name
-    def flux(self,system_state=None, invalues = None):
+
+    def flux(self, system_state, volfraction=None, dotvolfraction=None, invalues=None):
+        """
+
+        :param system_state:
+        :param volfraction:  numpy array
+        :param dotvolfraction:
+        :param invalues:
+        :return:
+        """
         pass
 
-class Buffer(Reaction):
-    """
-    Buffer reactions species + free buffer <--> buffered species
-    Internal variable is the amount of free buffer
-    """
-    species = [Ca]
-    def __init__(self,species, capacity, kon, koff):
-        self.capacity = capacity # concentration capacity (per cell)
-        self.kon = kon
-        self.koff = koff
-        self.species.add(species)
-        self.compartment = None
+    def get_freeCapacity(self, system_state):
+        pass
 
-    def equilibriate(self):
-        self.state = self.capacity-self.kon/self.koff*self.compartment.value(self.species)
-
-    def flux(self,system_state):
-        return self.kon*self.compartment.value(self.species)-self.koff*(self.capacity-self.state)
-
-    def getInternalVars(self,system_state=None):
-        if system_state is None:
-            return self.state
-        return system_state[self.system_state_offset:self.system_state_offset+self.N]
-
-    def setInternalVars(self,system_state):
-        self.state = system_state[self.system_state_offset:self.system_state_offset+self.N]
+    def get_InternalVars(self, system_state):
+        pass
 
     def get_dot_InternalVars(self,system_state):
-        values = self.getInternalVars(system_state)
-        return self.kon*self.compartment.value(self.species)-self.koff*(self.capacity-values)
-
-class CaBuffer(Reaction):
-    species = ()
-    def __init__(self,capacity,kon,koff):
-        self.kon = kon
-        self.koff = koff
-        self.capacity = capacity
-        self.species.add(Ca)
+        pass

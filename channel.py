@@ -71,13 +71,20 @@ class GHKChannel(Channel):
     p = 0
     q = 0
     max_permeability = None
+    quasi_steady = False
+
+    def __init__(self, quasi_steady=False):
+        self.quasi_steady = quasi_steady
 
     def current(self, system_state=None, V_m = None, invalues=None, outvalues=None): #@TODO: FIX FOR non-standard channels
         if V_m is None: V_m = self.membrane.phi(system_state)
         if invalues is None: invalues = self.membrane.inside.get_val_dict(system_state)
         if outvalues is None: outvalues = self.membrane.outside.get_val_dict(system_state)
 
-        permeability = self.permeability(system_state,V_m, invalues, outvalues)
+        permeability = self.permeability(system_state, V_m, invalues,
+                                         outvalues) if not self.quasi_steady else self.permeability_infty(system_state,
+                                                                                                          V_m, invalues,
+                                                                                                          outvalues)
 
         # For safety, but SLOW!!!
         if not hasattr(V_m, '__iter__'):
@@ -110,7 +117,7 @@ class GHKChannel(Channel):
         """
         if self.q == 0:
             return np.ones(self.N)
-        if system_state is None:
+        if system_state is None or self.quasi_steady:
             V_m = self.membrane.phi(system_state)
             return self.hinfty(V_m)
         if self.p == 0:
@@ -128,12 +135,14 @@ class GHKChannel(Channel):
         """
         if self.p == 0:
             return np.ones(self.N)
-        if system_state is None:
+        if system_state is None or self.quasi_steady:
             V_m = self.membrane.phi(system_state)
             return self.minfty(V_m)
         return system_state[self.system_state_offset:self.system_state_offset + self.N]
 
     def permeability(self, system_state=None, V_m = None, invalues=None, outvalues=None):
+        if self.quasi_steady:
+            return self.permeability_infty(system_state, V_m, invalues, outvalues)
         if V_m is None: V_m = self.membrane.phi(system_state)
         h = self.get_h(system_state) if self.q>0 else 1.0
         m = self.get_m(system_state) if self.p>0 else 1.0
@@ -186,6 +195,7 @@ class GHKChannel(Channel):
     def mdot(self, V_m=None, m=None):
         """ Compute dm/dt
         """
+
         if V_m is None: V_m = self.membrane.phi()
         if m is None: m = self.m
         return self.alpham(V_m) * (1.0 - m) - self.betam(V_m) * m
@@ -254,6 +264,7 @@ class GHKChannel(Channel):
     # [p, q]
     # expect that system_state offset is set??
     def getInternalVars(self, system_state=None):
+        if self.quasi_steady: return None
         if self.p == 0 and self.q == 0:
             return None
         elif self.q == 0:
@@ -263,6 +274,7 @@ class GHKChannel(Channel):
         return np.array([self.get_m(system_state), self.get_h(system_state)]).flatten()
 
     def setInternalVars(self, system_state):
+        if self.quasi_steady: return
         if self.p == 0:
             self.h = self.get_h(system_state)
         elif self.q == 0:
@@ -270,9 +282,9 @@ class GHKChannel(Channel):
         else:
             self.m = self.get_m(system_state)
             self.h = self.get_h(system_state)
-        pass
 
     def get_dot_InternalVars(self, system_state, t, V_m = None):
+        if self.quasi_steady: return None
         if self.p == 0 and self.q == 0:
             return None
         elif self.p == 0:

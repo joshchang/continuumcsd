@@ -18,7 +18,7 @@ class GlutmateExocytosis(MembraneReaction):
     membrane = None
 
     def __init__(self,name,membrane,Nrel):
-        super(self,MembraneReaction).__init__(name,membrane)
+        super(GlutmateExocytosis, self).__init__(name, membrane)
         self.Nrel = Nrel
 
     def get_Internal_vars(self):
@@ -28,7 +28,7 @@ class GlutmateExocytosis(MembraneReaction):
 
         pass
 
-    def flux(self,V_m=None,system_state = None, ICa = None, invalues = None, outvalues = None):
+    def flux(self, V_m=None, system_state=None, invalues=None, outvalues=None):
         Cai = invalues[Ca] if invalues is not None else self.membrane.inside.value(Ca,system_state)
         glu = invalues[Glu] if invalues is not None else self.membrane.inside.value(Glu,system_state)
         if ICa is None:
@@ -37,7 +37,7 @@ class GlutmateExocytosis(MembraneReaction):
         CaiHill = np.power(Cai,4.0)
         KnHIll = power(20e-6,4)
         Prel = CaiHill/(CaiHill+KnHIll)
-        return {Glu: Prel*glu*ICa*Nrel}
+        return {Glu: Prel * glu * self.Nrel}
 
 class GlutamatePackaging(Reaction):
     species = [Glu]

@@ -33,6 +33,7 @@ class Compartment(object):
         self.diffusivities = {}
         self.reactions = []
         self.diffusive = False
+        self.porosity_adjustment = True
         self.internalVars = []
         self.system_state_offset = 0
         self.species_internal_lookup = {}
@@ -41,6 +42,7 @@ class Compartment(object):
         self.maxvolume = maxvolume
         self.onedimension = False
         self.density = 1 # normalization density for computing fluxes ecs is 1. otherwise, it is the number density
+        self.initial_v_frac = 1.0
 
     def __str__(self):
         return self.name
@@ -154,7 +156,11 @@ class Compartment(object):
                     dvolumefraction[0] = (volumefraction[1] - volumefraction[0]) / dx
                     dvolumefraction[-1] = (volumefraction[-1] - volumefraction[-2]) / dx
                     diffusionterm = self.diffusivities[key] * volumefraction * ddconc + self.diffusivities[
-                                                                                            key] * dvolumefraction * dconc
+                                                                                            key] * dvolumefraction * dconc if not self.porosity_adjustment \
+                        else self.diffusivities[key] * power(volumefraction, 2) / self.initial_v_frac * ddconc + 2 * \
+                                                                                                                 self.diffusivities[
+                                                                                                                     key] \
+                                                                                                                 * volumefraction / self.initial_v_frac * dvolumefraction * dconc
                     phi = self.phi(system_state)
                     try:
                         """

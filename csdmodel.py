@@ -34,6 +34,7 @@ class CSDModel(object):
         # Each compartment is associated with a volume fraction
         self.compartments = []
         self.volfrac = {} # \sum v_j = 1, for v_j <=1
+        reactions = []
         """
          Store the volume fractions of each of the compartments
         """
@@ -52,6 +53,9 @@ class CSDModel(object):
 
         self.compartments.extend([comp])
         self.volfrac[comp] = fraction
+
+    def addReaction(self, reaction):
+        self.reactions.extend([reaction])
 
     def assembleSystem(self):
         """Assemble the FEM system. This is only run a single time before time-stepping. The values of the coefficient
@@ -181,6 +185,7 @@ class CSDModel(object):
 
         for key, val in self.volfrac.items():
             self.volfrac[key] = val*np.ones(self.N)
+            key.initial_v_frac = self.volfrac[key]  # set the initial volume fraction for the compartment
 
 
         self._N_internal_object = sum ([item[1] for item in self.internalVars])
