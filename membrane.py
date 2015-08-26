@@ -255,3 +255,8 @@ class Membrane(Coupling):
         Ce = self.outside.value(species,system_state)
         Ci = self.inside.value(species,system_state)
         return phi/species.z*(np.log(Ce)-np.log(Ci))
+
+    def phi_ion_matrix(self, species, system_state):
+        Ce = self.outside.value_matrix(species, system_state)
+        Ci = self.inside.value_matrix(species, system_state)
+        return phi / species.z * (np.log(Ce) - np.log(Ci))

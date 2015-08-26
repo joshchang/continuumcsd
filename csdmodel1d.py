@@ -120,13 +120,6 @@ class CSDModelInterval(CSDModel):
                 except:
                     print(key.name)
 
-        for (key, length, index) in self.internalVars:
-            if issubclass(type(key), Compartment):
-                temp[index:(index + length)] = key.get_dot_InternalVars(system_state=system_state, invalues = concentrations[key] \
-                        , fluxes=compartmentfluxes[key],volumefraction=volumefractions[key],dotvolumefraction=0.0,\
-                        t=t, dx = self.dx)
-            elif type(key) is CellCompartment:
-                print "WTF"
 
         # Also compute the fluxes and determine the changes in the concentrations
 
@@ -135,7 +128,21 @@ class CSDModelInterval(CSDModel):
 
         """
         for j in xrange(self.numcompartments - 1):
-            temp[(self._N_internal_object + j * self.N):(self._N_internal_object + (j + 1) * self.N)] = waterflows[self.compartments[j]]
+            temp[(self._N_internal_object + j * self.N):(self._N_internal_object + (j + 1) * self.N)] = waterflows[
+                self.compartments[j]]
+
+
+        for (key, length, index) in self.internalVars:
+            if issubclass(type(key), Compartment):
+                temp[index:(index + length)] = key.get_dot_InternalVars(system_state=system_state, invalues = concentrations[key] \
+                                                                        , fluxes=compartmentfluxes[key],
+                                                                        volumefraction=volumefractions[key],
+                                                                        dotvolumefraction=waterflows[key], \
+                                                                        t=t, dx = self.dx)
+            elif type(key) is CellCompartment:
+                print "WTF"
+
+
 
         if debug: return temp, compartmentfluxes, waterflows
         return temp
