@@ -111,7 +111,7 @@ class NMDAChannel(GHKChannel):
 
 class NaKATPasePump(Channel):
     species = [K, Na]
-    Imax = np.array([-2.0, 3.0]) * 3e-10  # 2K per 3Na Amperes
+    Imax = np.array([-2.0, 3.0]) * 3e-11  # 2K per 3Na Amperes
 
     def current(self, system_state=None, V_m=None, invalues=None, outvalues=None):
         Ke = self.membrane.outside.value(K,system_state) if outvalues is None else outvalues[K]

@@ -318,6 +318,22 @@ class CSDModel(object):
         vfrac[self.compartments[self.numcompartments-1]]= 1.0-totalfrac
         return vfrac
 
+    def volumefractions_matrix(self, system_state=None):
+        '''
+        Returns a dictionary of the volume fractions for a matrix of states shape = (time, states)
+        :param system_state:
+        :return: dict
+        '''
+        vfrac = customdict(float)
+        if system_state is None:
+            return self.volfrac
+        for j in xrange(self.numcompartments - 1):
+            vfrac[self.compartments[j]] = system_state[:, (self._N_internal_object + j * self.N):(
+            self._N_internal_object + (j + 1) * self.N)]
+        totalfrac = np.sum(list(vfrac.values()), axis=0)
+        vfrac[self.compartments[self.numcompartments - 1]] = 1.0 - totalfrac
+        return vfrac
+
 
     def setInternalVars(self,system_state):
         for (key, length, index) in self.internalVars:

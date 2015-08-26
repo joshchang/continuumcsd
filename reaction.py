@@ -48,6 +48,7 @@ class CompartmentReaction(Reaction):
     The flux computed is per unit cell.
     """
     compartment = None
+    conservative = True  # if conservative, rates and concentrations vary with volume changes in the compartment
 
     def __init__(self, name, compartment):
         self.membrane = compartment
