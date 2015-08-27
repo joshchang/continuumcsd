@@ -21,23 +21,16 @@ class GlutmateExocytosis(MembraneReaction):
         super(GlutmateExocytosis, self).__init__(name, membrane)
         self.Nrel = Nrel
 
-    def get_Internal_vars(self):
-        pass
-
-    def get_dot_Interval_vars(self):
-
-        pass
-
     def flux(self, V_m=None, system_state=None, invalues=None, outvalues=None):
         Cai = invalues[Ca] if invalues is not None else self.membrane.inside.value(Ca,system_state)
         glu = invalues[Glu] if invalues is not None else self.membrane.inside.value(Glu,system_state)
-        if ICa is None:
-            # need to compute the calcium current. This kind of sucks!!
-            pass
         CaiHill = np.power(Cai,4.0)
         KnHIll = power(20e-6,4)
         Prel = CaiHill/(CaiHill+KnHIll)
         return {Glu: Prel * glu * self.Nrel}
 
 class GlutamatePackaging(Reaction):
+    """
+    Generate glutamate for packaging into vesicles
+    """
     species = [Glu]

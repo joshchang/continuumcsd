@@ -62,6 +62,7 @@ class CSDModel(object):
         fields need to be updated between time-steps
         """
         # Loop through the entire model and composite the system of equations
+        global membrane
         self.diffusors = []  # [[compartment, species, diffusivity of species],[ ...],[...]]
         """
            Diffusors have source terms
@@ -156,7 +157,14 @@ class CSDModel(object):
                     channel.system_state_offset = index
                     channel.internalLength = len(channeltmp)
                     index+=len(channeltmp)
-
+            for reaction in membrane.reactions:
+                tmp = reaction.getInternalVars()
+                reaction.N = self.N
+                if tmp is not None:
+                    self.internalVars.extend([(reaction, len(tmp), index)])
+                    reaction.system_state_offset = index
+                    reaction.internalLength = len(tmp)
+                    index += len(tmp)
             # Register any reactions associated with the given membrane?
         """
         Compartments at the end, so we may reuse some computations

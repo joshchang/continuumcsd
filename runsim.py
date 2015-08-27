@@ -1,7 +1,16 @@
 from __future__ import print_function
+import matplotlib
+
+matplotlib.use('Agg')
 from matplotlib import animation
 import matplotlib.pyplot as plt
 import time
+import argparse
+import sys
+
+"""
+Imports for our custom library
+"""
 from channels import *
 from compartment import *
 from membrane import *
@@ -19,7 +28,7 @@ model = CSDModelInterval(N=31,
 
 # Define the compartments, and the membranes
 ecs = Compartment("ecs")
-ecs.porosity_adjustment = False  # @TODO!!!
+ecs.porosity_adjustment = True  # @TODO!!!
 neuron = CellCompartment("neuron",density = 2e5) # 2e5 neurons per meter, 4e10 per sq meter
 glia = CellCompartment("glia",density = 2e5) #2e5 glia per meter
 
@@ -74,17 +83,17 @@ neuron_mem.addChannel(CaLChannel(),10000.) # number of channels per neuron
 neuron_mem.addChannel(CaNChannel(quasi_steady=True), 10000.)  # number of channels per neuron
 neuron_mem.addChannel(gNMDAChannel(),10000.)
 
-neuron_mem.addChannel(PMCAPump(),10000) # PMCA pump
-neuron_mem.addChannel(NaCaExchangePump(),1000) # sodium-calcium exchanger
+neuron_mem.addChannel(PMCAPump(), 10000.)  # PMCA pump
+neuron_mem.addChannel(NaCaExchangePump(), 1000.)  # sodium-calcium exchanger
 neuron_mem.addChannel(NaKATPasePump(), 5e4)  # 5000 ATPase per neuron
 neuron_mem.addChannel(NonSpecificChlorideChannel(phi0), 1e7)
 neuron_mem.addChannel(AquaPorin(), 1e-7)  # Add water exchange
 
-glial_mem.addChannel(KIRChannel(),50000) # KIR Channel
+glial_mem.addChannel(KIRChannel(), 50000.)  # KIR Channel
 glial_mem.addChannel(NaKATPasePump(), 2e5)  # 10000000 ATPase per glia
-glial_mem.addChannel(KDRglialChannel(),175000)
-glial_mem.addChannel(PMCAPump(),10000)
-glial_mem.addChannel(NaCaExchangePump(),1000) # sodium-calcium exchanger
+glial_mem.addChannel(KDRglialChannel(), 175000.)
+glial_mem.addChannel(PMCAPump(), 10000.)
+glial_mem.addChannel(NaCaExchangePump(), 1000.)  # sodium-calcium exchanger
 glial_mem.addChannel(NonSpecificChlorideChannel(phig0), 1e7)
 glial_mem.addChannel(AquaPorin(), 1e-7)  # Add water exchange
 
@@ -120,7 +129,15 @@ t = []
 t.append(-stim_duration)
 start_time = time.time()
 
-if __name__== '__main__':
+
+def main(argv):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", "--prefix", dest="prefix",
+                        help="prefix for output files", metavar="PREFIX")
+    parser.parse_args(argv)
+    prefix = parser.prefix
+
+
     print('{:<7} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10}'.format('time', 'V_n','V_g', 'K_e', 'K_n','K_g','Cl_e','Ca_n','g_e') )
     print('{:<7.3f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:10.6f} {:10.6f}'.format(model.odesolver.t, 1e3*neuron_mem.phi()[0], 1e3*glial_mem.phi()[0], 1e3*ecs.value(K)[0], 1e3*neuron.value(K)[0], 1e3*glia.value(K)[0], 1e3*ecs.value(Cl)[0], 1e3*neuron.value(Ca)[0], 1e3*ecs.value(Glu)[0]))
 
@@ -144,7 +161,7 @@ if __name__== '__main__':
             system_states.append(y)
             t.append(model.odesolver.t)
 
-        while model.odesolver.successful() and model.odesolver.t < 120.0:
+        while model.odesolver.successful() and model.odesolver.t < 20.0:
             y = model.odesolver.integrate(model.odesolver.t+1e-3)
             if sum(np.isnan(y))>0: break
             print('{:<7.3f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:10.6f}'.format(model.odesolver.t, 1e3*neuron_mem.phi(y)[0], 1e3*glial_mem.phi(y)[0], 1e3*ecs.value(K,y)[0], 1e3*neuron.value(K,y)[0], 1e3*glia.value(K,y)[0], 1e3*ecs.value(Cl,y)[0], 1e3*neuron.value(Ca,y)[0], 1e3*ecs.value(Glu,y)[0]))
@@ -167,7 +184,7 @@ if __name__== '__main__':
     Do some plotting below
     """
 
-    Writer = animation.writers['ffmpeg']
+    Writer = animation.writers['mencoder']
     writer = Writer(fps=100, metadata=dict(artist='Josh Chang'), bitrate=1800)
 
     fig = plt.figure()
@@ -194,7 +211,7 @@ if __name__== '__main__':
 
     Ke_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    Ke_animation.save("Ke.mp4", writer=writer)
+    Ke_animation.save(prefix + "Ke.mp4", writer=writer)
 
     fig = plt.figure()
     ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(110, 140))
@@ -223,7 +240,7 @@ if __name__== '__main__':
 
     Kg_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    Kg_animation.save("Kg.mp4", writer=writer)
+    Kg_animation.save(prefix + "Kg.mp4", writer=writer)
 
     fig = plt.figure()
     ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(-75, 30))
@@ -252,7 +269,7 @@ if __name__== '__main__':
 
     Vn_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    Vn_animation.save("Vn.mp4", writer=writer)
+    Vn_animation.save(prefix + "Vn.mp4", writer=writer)
 
     fig = plt.figure()
     ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(-85, 30))
@@ -281,7 +298,7 @@ if __name__== '__main__':
 
     Vg_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    Vg_animation.save("Vg.mp4", writer=writer)
+    Vg_animation.save(prefix + "V_g.mp4", writer=writer)
 
     fig = plt.figure()
     ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(0, 0.95))
@@ -311,7 +328,7 @@ if __name__== '__main__':
 
     vecs_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                              frames=frames, interval=100, blit=True)
-    vecs_animation.save("vecs.mp4", writer=writer)
+    vecs_animation.save(prefix + "vecs.mp4", writer=writer)
 
     fig = plt.figure()
     ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(0.05, 0.95))
@@ -341,7 +358,7 @@ if __name__== '__main__':
 
     vn_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    vn_animation.save("vn.mp4", writer=writer)
+    vn_animation.save(prefix + "vn.mp4", writer=writer)
 
     fig = plt.figure()
     ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(0.05, 0.95))
@@ -372,4 +389,8 @@ if __name__== '__main__':
 
     vg_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    vg_animation.save("vg.mp4", writer=writer)
+    vg_animation.save(prefix + "vg.mp4", writer=writer)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

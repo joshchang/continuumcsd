@@ -94,7 +94,7 @@ class NMDAChannel(GHKChannel):
     q = 1
     # name = 'GLutamate-independent NMDA channel'
     species = [Na, K, Ca]
-    max_permeability = np.array([1, 1, 20]) * 3.4e-12
+    max_permeability = np.array([1, 1, 10]) * 7.0e-12
 
     def alpham(self, V_m):
         return 500. / (1 + exp((13.5e-3 - self.membrane.outside.value(K)) / 1.42e-3))

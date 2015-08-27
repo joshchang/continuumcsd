@@ -12,7 +12,7 @@ Calcium buffering is a compartment reaction
 class CaMbuffer(CompartmentReaction):
     compartment = None
     capacity = 1.0
-    free = capacity
+    free = capacity  # free buffer concentration
 
     def flux(self, system_state, invalues=None, volfrac=None, dotvolfrac=None):
         if invalues is None: invalues = self.compartment.get_val_dict(system_state)
@@ -29,6 +29,12 @@ class CaMbuffer(CompartmentReaction):
         if system_state is not None:
             return system_state[self.system_state_offset:self.system_state_offset + self.N]
         return self.free
+
+    def equilibriate(self, system_state=None, invalues=None, volfrac=None, dotvolfrac=None):
+
+        if invalues is None: invalues = self.compartment.get_val_dict(system_state)
+        self.free = self.k_on
+        pass
 
     def __init__(self, name, compartment, capacity):
         super(CaMbuffer).__init__(name, compartment)

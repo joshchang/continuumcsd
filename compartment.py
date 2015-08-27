@@ -33,7 +33,7 @@ class Compartment(object):
         self.diffusivities = {}
         self.reactions = []
         self.diffusive = False
-        self.porosity_adjustment = True
+        self.porosity_adjustment = False
         self.internalVars = []
         self.system_state_offset = 0
         self.species_internal_lookup = {}
