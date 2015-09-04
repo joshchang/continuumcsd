@@ -25,7 +25,7 @@ class Compartment(object):
 
     """
 
-    def __init__(self, name=None, minvolume=0.05, maxvolume=0.9):
+    def __init__(self, name="", minvolume=0.05, maxvolume=0.9):
         self.name = name
         self.species = set()
         self.values = {}

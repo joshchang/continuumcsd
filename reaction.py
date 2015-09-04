@@ -22,6 +22,9 @@ class Reaction(object):
     def flux(self,system_state = None):
         pass
 
+    def vectorizevalues(self):
+        pass
+
 class MembraneReaction(Reaction):
     """
     Membrane reactions can modify concentrations on both sides of the membrane
@@ -51,7 +54,7 @@ class CompartmentReaction(Reaction):
     conservative = True  # if conservative, rates and concentrations vary with volume changes in the compartment
 
     def __init__(self, name, compartment):
-        self.membrane = compartment
+        self.compartment = compartment
         self.name = name
 
     def flux(self, system_state, volfraction=None, dotvolfraction=None, invalues=None):

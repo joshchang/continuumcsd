@@ -110,9 +110,15 @@ class CSDModelInterval(CSDModel):
 
             elif issubclass(type(key), Reaction):
                 if type(key) is MembraneReaction:
-                    flux = key.flux(system_state,membranecurrents[key.membrane])
-                flux = key.flux(system_state)
-                compartmentfluxes[key.compartment].update(flux)
+                    ydot, flux = key.get_dot_InternalVars(system_state, invalues=concentrations[key.inside],
+                                                          outvalues=concentrations[key.outside])
+                    temp[index:(index + length)] = ydot
+
+                elif type(key) is CompartmentReaction:
+                    flux = key.flux(system_state)
+                    ydot, flux = key.get_dot_InternalVars()
+                    temp[index:(index + length)] = ydot
+
 
             elif not issubclass(type(key), Compartment):
                 try:

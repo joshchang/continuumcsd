@@ -158,8 +158,10 @@ class CSDModel(object):
                     channel.internalLength = len(channeltmp)
                     index+=len(channeltmp)
             for reaction in membrane.reactions:
-                tmp = reaction.getInternalVars()
                 reaction.N = self.N
+                reaction.vectorizevalues()
+                tmp = reaction.getInternalVars()
+
                 if tmp is not None:
                     self.internalVars.extend([(reaction, len(tmp), index)])
                     reaction.system_state_offset = index
@@ -183,8 +185,10 @@ class CSDModel(object):
 
         for compartment in self.compartments:
             for reaction in compartment.reactions:
-                tmp = reaction.getInternalVars()
                 reaction.N = self.N
+                reaction.vectorizevalues()
+                tmp = reaction.getInternalVars()
+
                 if tmp is not None:
                     self.internalVars.extend([ (reaction, len(tmp),index)])
                     reaction.system_state_offset = index

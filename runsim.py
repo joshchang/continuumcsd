@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from __future__ import print_function
 import matplotlib
 
@@ -16,6 +17,7 @@ from compartment import *
 from membrane import *
 from params import *
 from glutamate import *
+from calciumdynamics import *
 
 from csdmodel1d import *
 
@@ -28,7 +30,7 @@ model = CSDModelInterval(N=31,
 
 # Define the compartments, and the membranes
 ecs = Compartment("ecs")
-ecs.porosity_adjustment = True  # @TODO!!!
+ecs.porosity_adjustment = False  # @TODO!!!
 neuron = CellCompartment("neuron",density = 2e5) # 2e5 neurons per meter, 4e10 per sq meter
 glia = CellCompartment("glia",density = 2e5) #2e5 glia per meter
 
@@ -65,7 +67,15 @@ neuron.addSpecies(K,Ki0,0,'K_n')
 neuron.addSpecies(Na,Nai0,0,'Na_n')
 neuron.addSpecies(Cl,Cli0,0,'Cl_n')
 neuron.addSpecies(Ca,Cai0,0,'Ca_n')
-neuron.addSpecies(Glu,1e-6,name = "g_n")
+neuron.addSpecies(Glu, Glun0, name="g_n")
+
+# neuron_CaM = CaMbuffer("CaM_n",neuron,1e-5)
+# neuron_CaM.equilibriate()
+# neuron.addReaction(neuron_CaM) # Have capacity to buffer .01 mM Ca
+
+# glial_CaM = CaMbuffer("CaM_g", glia, 1e-5)
+# glial_CaM.equilibriate()
+# glia.addReaction(glial_CaM)
 
 glia.addSpecies(K, Kg0, name='K_g')
 glia.addSpecies(Na, Nag0, name='Na_g')
@@ -77,38 +87,39 @@ neuron_mem.addChannel(NaTChannel(quasi_steady=True), 1000.)  # 10000 per neuron?
 neuron_mem.addChannel(NaPChannel(quasi_steady=True), 100.)  # 100 per neuron
 neuron_mem.addChannel(KDRChannel(),10000.) # number of channels per neuron
 neuron_mem.addChannel(KAChannel(quasi_steady=True), 10000.)  # number of channels per neuron
-neuron_mem.addChannel(SKChannel(), 1000.)  # SK
+neuron_mem.addChannel(SKChannel(), 1000.) # SK
 neuron_mem.addChannel(CaPChannel(),10000.) # number of channels per neuron
 neuron_mem.addChannel(CaLChannel(),10000.) # number of channels per neuron
 neuron_mem.addChannel(CaNChannel(quasi_steady=True), 10000.)  # number of channels per neuron
 neuron_mem.addChannel(gNMDAChannel(),10000.)
 
-neuron_mem.addChannel(PMCAPump(), 10000.)  # PMCA pump
-neuron_mem.addChannel(NaCaExchangePump(), 1000.)  # sodium-calcium exchanger
+neuron_mem.addChannel(PMCAPump(), 10000)  # PMCA pump
+neuron_mem.addChannel(NaCaExchangePump(), 1000)  # sodium-calcium exchanger
 neuron_mem.addChannel(NaKATPasePump(), 5e4)  # 5000 ATPase per neuron
-neuron_mem.addChannel(NonSpecificChlorideChannel(phi0), 1e7)
-neuron_mem.addChannel(AquaPorin(), 1e-7)  # Add water exchange
+neuron_mem.addChannel(NonSpecificChlorideChannel(phi0), 1e5)
+neuron_mem.addChannel(AquaPorin(), 1e-6)  # Add water exchange
 
-glial_mem.addChannel(KIRChannel(), 50000.)  # KIR Channel
+glial_mem.addChannel(KIRChannel(), 50000)  # KIR Channel
 glial_mem.addChannel(NaKATPasePump(), 2e5)  # 10000000 ATPase per glia
-glial_mem.addChannel(KDRglialChannel(), 175000.)
-glial_mem.addChannel(PMCAPump(), 10000.)
-glial_mem.addChannel(NaCaExchangePump(), 1000.)  # sodium-calcium exchanger
-glial_mem.addChannel(NonSpecificChlorideChannel(phig0), 1e7)
-glial_mem.addChannel(AquaPorin(), 1e-7)  # Add water exchange
+glial_mem.addChannel(KDRglialChannel(), 175000)
+glial_mem.addChannel(PMCAPump(), 10000)
+glial_mem.addChannel(NaCaExchangePump(), 1000)  # sodium-calcium exchanger
+glial_mem.addChannel(NonSpecificChlorideChannel(phig0), 1e5)
+glial_mem.addChannel(AquaPorin(), 1e-6)  # Add water exchange
 
 glial_mem.addChannel(CaPChannel(),10000.) # number of channels per neuron
 glial_mem.addChannel(CaLChannel(),10000.) # number of channels per neuron
-# glial_mem.addChannel(CaNChannel(),10000.) # number of channels per neuron
+#glial_mem.addChannel(CaNChannel(),10000.) # number of channels per neuron
 
 # add glutamate exocytosis
-# glutamate_exo = GlutmateExocytosis("G_exo", 1000)
-#neuron_mem.addReaction(glutamate_exo)
+glutamate_exo = GlutmateExocytosis("G_exo", neuron_mem, 1000)
+neuron_mem.addReaction(glutamate_exo)
+
+
 
 model.addMembrane(neuron_mem)
 model.addMembrane(glial_mem)
 
-#model.addReaction(glutamate_exo)
 
 neuron_mem.addLeakChannels()
 neuron.balanceWith(ecs)
@@ -120,9 +131,9 @@ model.assembleSystem()
 system_state = model.getInternalVars()
 
 y = model.getInternalVars()
-model.odesolver.set_initial_value(y,0)
+model.odesolver.set_initial_value(y, 0)
 
-stim_duration = 4.0 # poke holes for 1 seconds
+stim_duration = 1.0  # poke holes for 1 seconds
 model.odesolver.t = -stim_duration
 system_states = []
 t = []
@@ -130,13 +141,14 @@ t.append(-stim_duration)
 start_time = time.time()
 
 
-def main(argv):
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--prefix", dest="prefix",
                         help="prefix for output files", metavar="PREFIX")
-    parser.parse_args(argv)
-    prefix = parser.prefix
+    results = parser.parse_args()
+    prefix = results.prefix
 
+    print('Result files will have prefix: ' + prefix)
 
     print('{:<7} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10}'.format('time', 'V_n','V_g', 'K_e', 'K_n','K_g','Cl_e','Ca_n','g_e') )
     print('{:<7.3f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:10.6f} {:10.6f}'.format(model.odesolver.t, 1e3*neuron_mem.phi()[0], 1e3*glial_mem.phi()[0], 1e3*ecs.value(K)[0], 1e3*neuron.value(K)[0], 1e3*glia.value(K)[0], 1e3*ecs.value(Cl)[0], 1e3*neuron.value(Ca)[0], 1e3*ecs.value(Glu)[0]))
@@ -144,7 +156,7 @@ def main(argv):
     # Hole method for initiation - very slow!!
     neuron_hole = HoleChannel([K, Na, Cl], 1.0)
     density = np.zeros(model.N)
-    density[0] = 1
+    density[:1] = 1.0
     neuron_mem.addChannel(neuron_hole, density)
 
     # glial_hole = HoleChannel([K,Na,Cl],1e-2)
@@ -160,6 +172,9 @@ def main(argv):
             print('{:<7.3f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:10.6f}'.format(model.odesolver.t, 1e3*neuron_mem.phi(y)[0], 1e3*glial_mem.phi(y)[0], 1e3*ecs.value(K,y)[0], 1e3*neuron.value(K,y)[0], 1e3*glia.value(K,y)[0], 1e3*ecs.value(Cl,y)[0], 1e3*neuron.value(Ca,y)[0], 1e3*ecs.value(Glu,y)[0]))
             system_states.append(y)
             t.append(model.odesolver.t)
+
+        neuron_mem.removeChannel(neuron_hole)
+        model.odesolver.set_initial_value(y)
 
         while model.odesolver.successful() and model.odesolver.t < 20.0:
             y = model.odesolver.integrate(model.odesolver.t+1e-3)
@@ -184,8 +199,8 @@ def main(argv):
     Do some plotting below
     """
 
-    Writer = animation.writers['mencoder']
-    writer = Writer(fps=100, metadata=dict(artist='Josh Chang'), bitrate=1800)
+    Writer = animation.writers['imagemagick']
+    writer = Writer(fps=30, metadata=dict(artist='Josh Chang'))
 
     fig = plt.figure()
     ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(0, 45))
@@ -211,7 +226,7 @@ def main(argv):
 
     Ke_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    Ke_animation.save(prefix + "Ke.mp4", writer=writer)
+    Ke_animation.save(prefix + "Ke.gif", writer=writer)
 
     fig = plt.figure()
     ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(110, 140))
@@ -240,7 +255,7 @@ def main(argv):
 
     Kg_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    Kg_animation.save(prefix + "Kg.mp4", writer=writer)
+    Kg_animation.save(prefix + "Kg.gif", writer=writer)
 
     fig = plt.figure()
     ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(-75, 30))
@@ -269,7 +284,7 @@ def main(argv):
 
     Vn_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    Vn_animation.save(prefix + "Vn.mp4", writer=writer)
+    Vn_animation.save(prefix + "V_n.gif", writer=writer)
 
     fig = plt.figure()
     ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(-85, 30))
@@ -298,7 +313,7 @@ def main(argv):
 
     Vg_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    Vg_animation.save(prefix + "V_g.mp4", writer=writer)
+    Vg_animation.save(prefix + "V_g.gif", writer=writer)
 
     fig = plt.figure()
     ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(0, 0.95))
@@ -328,7 +343,7 @@ def main(argv):
 
     vecs_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                              frames=frames, interval=100, blit=True)
-    vecs_animation.save(prefix + "vecs.mp4", writer=writer)
+    vecs_animation.save(prefix + "vecs.gif", writer=writer)
 
     fig = plt.figure()
     ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(0.05, 0.95))
@@ -358,7 +373,7 @@ def main(argv):
 
     vn_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    vn_animation.save(prefix + "vn.mp4", writer=writer)
+    vn_animation.save(prefix + "vn.gif", writer=writer)
 
     fig = plt.figure()
     ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(0.05, 0.95))
@@ -389,8 +404,35 @@ def main(argv):
 
     vg_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    vg_animation.save(prefix + "vg.mp4", writer=writer)
+    vg_animation.save(prefix + "vg.gif", writer=writer)
+
+    fig = plt.figure()
+    ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(-4e-3, 4e-3))
+    line, = ax.plot([], [], lw=2)
+
+    tt0 = ax.text(120, .004, 'ECS charge')
+    ttl = ax.text(120, .003, '')
+
+    dt = 200
+    frames = len(system_states) / dt
+
+    def init():
+        line.set_data([], [])
+        ttl.set_text('t=' + str(0.0))
+        return line,
+
+    def animate(i):
+        line.set_data(model.x * 1e6, ecs.charge(system_states[i * dt]))
+        ttl.set_text('t=' + str(t[i * dt]))
+        return line,
+
+    animation.FuncAnimation(fig, animate, init_func=init,
+                            frames=frames, interval=100, blit=True)
+
+    vg_animation = animation.FuncAnimation(fig, animate, init_func=init,
+                                           frames=frames, interval=100, blit=True)
+    vg_animation.save(prefix + "charge_ecs.gif", writer=writer)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()

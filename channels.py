@@ -259,12 +259,12 @@ class gNMDAChannel(NMDAChannel):
     def equilibriate(self, V_m=None, system_state = None):
         super(NMDAChannel, self).equilibriate(V_m)
         g = self.membrane.outside.value(Glu, system_state)
-        self.Popen =self.r1*g/(self.r1+g+self.r2)
+        self.Popen = self.r1 * g / (self.r1 * g + self.r2)
 
     def permeability_infty(self, system_state=None, V_m = None):
         voltagegating = super(NMDAChannel,self).permeability_infty(system_state,V_m)  # returns a dictionary
         g = self.membrane.outside.value(Glu, system_state)
-        return scalar_mult_dict(voltagegating,*self.r1*g/(self.r1+g+self.r2))
+        return scalar_mult_dict(voltagegating, self.r1 * g / (self.r1 * g + self.r2))
 
 
 class KDRglialChannel(GHKChannel):
