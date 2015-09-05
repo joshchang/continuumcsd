@@ -176,7 +176,7 @@ def main():
         neuron_mem.removeChannel(neuron_hole)
         model.odesolver.set_initial_value(y)
 
-        while model.odesolver.successful() and model.odesolver.t < 20.0:
+        while model.odesolver.successful() and model.odesolver.t < 120.0:
             y = model.odesolver.integrate(model.odesolver.t+1e-3)
             if sum(np.isnan(y))>0: break
             print('{:<7.3f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:10.6f}'.format(model.odesolver.t, 1e3*neuron_mem.phi(y)[0], 1e3*glial_mem.phi(y)[0], 1e3*ecs.value(K,y)[0], 1e3*neuron.value(K,y)[0], 1e3*glia.value(K,y)[0], 1e3*ecs.value(Cl,y)[0], 1e3*neuron.value(Ca,y)[0], 1e3*ecs.value(Glu,y)[0]))

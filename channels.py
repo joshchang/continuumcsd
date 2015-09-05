@@ -100,13 +100,13 @@ class NMDAChannel(GHKChannel):
         return 500. / (1 + exp((13.5e-3 - self.membrane.outside.value(K)) / 1.42e-3))
 
     def betam(self, V_m):
-        return 0.0
+        return 500.0 - self.alpham(V_m)
 
     def alphah(self, V_m):
         return 0.5*power((1.0 + exp((self.membrane.outside.value(K) - 6.75e-3) / 0.71e-3)), -1)
 
     def betah(self, V_m):
-        return 0.0
+        return 5e-2 - self.alphah(V_m)
 
 
 class NaKATPasePump(Channel):
@@ -220,7 +220,8 @@ class gNMDAChannel(NMDAChannel):
     """
     Glutamate-dependent NMDA Channel
     """
-    r1 = 0.072 # 72 /mM/s
+    r1 = 72000.0  # 72 /mM/s
+    r1 = 72e4
     r2 = 6.6 # 6.6/s
     Popen = 0
     # name = 'Glutamate-dependent NMDA Channel'
