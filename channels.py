@@ -140,22 +140,6 @@ class NaCaExchangePump(Channel):
         else:
             Cae = outvalues[Ca]
             Nae = outvalues[Na]
-        '''
-        # We want to do this, but it is SUPER SLOW!!!
-        if isinstance(Nai, collections.Sequence):
-            # Prevent overflows
-            I = np.fromiter([(power(nai/nae,3)*(cae/cai)*exp(vm/phi)-2.5)/(1+power(.0875/nae,3)) \
-                /(cae/cai+1.38e-3/cai)/(exp(0.65*vm/phi)+0.1) \
-                if vm<0 else \
-                (power(nai/nae,3)*(cae/cai)-2.5*exp(-vm/phi))/(1+power(.0875/nae,3)) \
-                    /(cae/cai+1.38e-3/cai)/(exp(-0.35*vm/phi) + 0.1*exp(-vm/phi)  ) \
-                for (nai,nae,cai,cae,vm) in zip(Nai,Nae,Cai,Cae,V_m)],np.float64)
-            pass
-        else:
-            gamma = 0.35
-            I = (power(Nai/Nae,3)*(Cae/Cai)*exp(gamma*V_m/phi)-2.5*exp((gamma-1.0)*V_m/phi))/(1+power(.0875/Nae,3)) \
-                /(Cae/Cai+1.38e-3/Cai)/(0.1*exp((gamma-1)*V_m/phi)+1)
-        '''
 
         # Maybe this is faster??
 
@@ -163,10 +147,6 @@ class NaCaExchangePump(Channel):
         Cae / Cai + 1.38e-3 / Cai) / (exp(0.65 * V_m / phi) + 0.1) ,  (power(Nai / Nae, 3) * (Cae / Cai) - 2.5 * exp(-V_m / phi)) / (1 + power(.0875 / Nae, 3)) / (
             Cae / Cai + 1.38e-3 / Cai) / (exp(-0.35 * V_m / phi) + 0.1 * exp(-V_m / phi)))
 
-        """
-        I = np.where(V_m<0, (power(Nai/Nae,3)*(Cae/Cai)*exp(V_m/phi)-2.5)/(1+power(.0875/Nae,3))/(Cae/Cai+1.38e-3/Cai)/(exp(0.65*V_m/phi)+0.1), # First line runs if <0
-            (power(Nai/Nae,3)*(Cae/Cai)-2.5*exp(-V_m/phi))/(1+power(.0875/Nae,3))/(Cae/Cai+1.38e-3/Cai)/(exp(-0.35*V_m/phi) + 0.1*exp(-V_m/phi) )) # Second line if >0
-        """
         return {Na: self.gmax[0]*I, Ca: self.gmax[1]*I}
 
 
@@ -221,7 +201,6 @@ class gNMDAChannel(NMDAChannel):
     Glutamate-dependent NMDA Channel
     """
     r1 = 72000.0  # 72 /mM/s
-    r1 = 72e4
     r2 = 6.6 # 6.6/s
     Popen = 0
     # name = 'Glutamate-dependent NMDA Channel'

@@ -74,14 +74,18 @@ class Compartment(object):
 
     def value(self, species, system_state=None):
         if system_state is None: return self.values[species]
-        return system_state[self.system_state_offset \
+        temp = system_state[self.system_state_offset \
                             + self.species_internal_lookup[species]:self.system_state_offset \
                                                                     + self.species_internal_lookup[species] + self.N]
+        temp[temp < 0] = 1e-17
+        return temp
 
     def value_matrix(self, species, system_state):
-        return system_state[:, self.system_state_offset \
+        temp = system_state[:, self.system_state_offset \
                                + self.species_internal_lookup[species]:self.system_state_offset \
                                                                        + self.species_internal_lookup[species] + self.N]
+        temp[temp < 0] = 1e-17
+        return temp
 
     def get_val_dict(self, system_state=None):
         """
@@ -90,11 +94,15 @@ class Compartment(object):
         """
         if system_state is None: return self.values
         # else, return corresponding entries in system_state
-        return {species: system_state[self.system_state_offset \
-                                      + self.species_internal_lookup[species]:self.system_state_offset \
+        valdict = customdict(float)
+        for species in self.species:
+            temp = system_state[self.system_state_offset \
+                                + self.species_internal_lookup[species]:self.system_state_offset \
                                                                               + self.species_internal_lookup[
-                                                                                  species] + self.N] for species in
-                self.species}
+                                                                            species] + self.N]
+            temp[temp < 0] = 1e-17
+            valdict[species] = temp
+        return valdict
 
     def get_val_matrix_dict(self, system_state):
         """
@@ -103,11 +111,16 @@ class Compartment(object):
         """
         if system_state is None: return self.values
         # else, return corresponding entries in system_state
-        return {species: system_state[:, self.system_state_offset \
-                                         + self.species_internal_lookup[species]:self.system_state_offset \
+
+        valdict = customdict(float)
+        for species in self.species:
+            temp = system_state[:, self.system_state_offset \
+                                   + self.species_internal_lookup[species]:self.system_state_offset \
                                                                                  + self.species_internal_lookup[
-                                                                                     species] + self.N] for species in
-                self.species}
+                                                                               species] + self.N]
+            temp[temp < 0] = 1e-17
+            valdict[species] = temp
+        return valdict
 
     def setInternalVars(self, values):
         j = 0

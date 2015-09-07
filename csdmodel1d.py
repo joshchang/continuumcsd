@@ -107,7 +107,9 @@ class CSDModelInterval(CSDModel):
 
                 waterflows[key.outside] += wf*have_flow
                 waterflows[key.inside] -= wf*have_flow
-
+                '''
+                Settle for now on the cludgy solution of putting all reactions into model.internalvars
+                '''
             elif issubclass(type(key), Reaction):
                 if type(key) is MembraneReaction:
                     ydot, flux = key.get_dot_InternalVars(system_state, invalues=concentrations[key.inside],

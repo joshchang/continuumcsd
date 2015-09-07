@@ -6,6 +6,7 @@ Calcium buffering is a compartment reaction
 
 \dot( vB_free ) = -k_on v Ca B_free + k_off v (B_tot - B_free)
  \dot{B_free} = -k_on Ca B_free + k_off(B_tot-B_free) - B_free dot(v)
+
 """
 
 
@@ -20,7 +21,7 @@ class CaMbuffer(CompartmentReaction):
     def flux(self, system_state, invalues=None, volfrac=None, dotvolfrac=None):
         if invalues is None: invalues = self.compartment.get_val_dict(system_state)
         free = self.get_InternalVars(system_state)
-        return invalues[Ca] * self.k_on - self.k_off * (self.capacity - free)
+        return volfrac * (invalues[Ca] * self.k_on - self.k_off * (self.capacity - free))
 
     def get_dot_InternalVars(self, system_state=None, invalues=None, volfrac=None, dotvolfrac=None):
         if system_state is not None:
@@ -29,7 +30,7 @@ class CaMbuffer(CompartmentReaction):
             free = self.free
 
         return -self.k_on * invalues[Ca] * volfrac * free + self.k_off * volfrac * (
-        self.capacity - free) - free * dotvolfrac
+            self.capacity - free) - free * dotvolfrac
 
     def getInternalVars(self, system_state=None):
         if system_state is not None:
@@ -129,7 +130,7 @@ class LavrentovichHemkin(CompartmentReaction):
         vserca = self.vm2 * (1.0 / (1.0 + np.power(self.k2 / Cai, 2)))
         vplc = self.vp * (1.0 / (1.0 + power(self.kp / Cai)))
         vcicr = 4.0 * self.vm3 * (CaER - Cai) / (1.0 + power(self.kip3 / IP3, self.m)) / (
-        1.0 + power(self.kcat / Cai, self.n)) / (1.0 + power(Cai / self.kcaa, self.n))
+            1.0 + power(self.kcat / Cai, self.n)) / (1.0 + power(Cai / self.kcaa, self.n))
 
         return {Ca: 0, IP3: 0}
 
