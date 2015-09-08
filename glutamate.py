@@ -22,15 +22,18 @@ class GlutmateExocytosis(MembraneReaction):
         super(self.__class__, self).__init__(name, membrane)
         self.Nrel = Nrel
 
-    def flux(self, system_state, volfractions=None, invalues=None, outvalues=None):
+    def flux(self, system_state, volfrac=None, dotvolfrac=None, invalues=None, outvalues=None):
+        """
+        Flux out per cell
+        """
         Cai = invalues[Ca] if invalues is not None else self.membrane.inside.value(Ca,system_state)
         glu = invalues[Glu] if invalues is not None else self.membrane.inside.value(Glu,system_state)
-        Prel = 1 / (1 + np.power(20e-6 / Cai, 4.0)) - self.P_rel0
-        return {Glu: Prel * glu * self.Nrel}
+        Prel = 1.0 / (1.0 + np.power(20e-6 / Cai, 4.0))  # - self.P_rel0
+        return {Glu: Prel * glu * 1e6 * self.Nrel}
 
     def equilibriate(self):
         Cai = self.membrane.inside.value(Ca)
-        self.P_rel0 = 1 / (1 + np.power(20e-6 / Cai, 4.0))
+        self.P_rel0 = 1.0 / (1.0 + np.power(20e-6 / Cai, 4.0))
 
     def getInternalVars(self):
         return None
@@ -53,7 +56,7 @@ class GlutamateDecay(CompartmentReaction):
     def get_InternalVars(self, system_state):
         return None
 
-    def flux(self, system_state, volfraction=None, dotvolfraction=None, invalues=None):
+    def flux(self, system_state, volfrac=None, dotvolfrac=None, invalues=None):
         pass
 
     def equilibriate(self):

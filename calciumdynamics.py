@@ -30,7 +30,8 @@ class CaMbuffer(CompartmentReaction):
             free = self.free
 
         return -self.k_on * invalues[Ca] * volfrac * free + self.k_off * volfrac * (
-            self.capacity - free) - free * dotvolfrac
+            self.capacity - free) - free * dotvolfrac, {
+                   Ca: volfrac * (invalues[Ca] * self.k_on - self.k_off * (self.capacity - free))}
 
     def getInternalVars(self, system_state=None):
         if system_state is not None:

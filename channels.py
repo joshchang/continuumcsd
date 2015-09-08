@@ -106,7 +106,7 @@ class NMDAChannel(GHKChannel):
         return 0.5*power((1.0 + exp((self.membrane.outside.value(K) - 6.75e-3) / 0.71e-3)), -1)
 
     def betah(self, V_m):
-        return 5e-2 - self.alphah(V_m)
+        return .5 - self.alphah(V_m)
 
 
 class NaKATPasePump(Channel):

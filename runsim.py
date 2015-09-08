@@ -153,7 +153,7 @@ def main():
     print('{:<7.3f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:10.6f} {:10.6f}'.format(model.odesolver.t, 1e3*neuron_mem.phi()[0], 1e3*glial_mem.phi()[0], 1e3*ecs.value(K)[0], 1e3*neuron.value(K)[0], 1e3*glia.value(K)[0], 1e3*ecs.value(Cl)[0], 1e3*neuron.value(Ca)[0], 1e3*ecs.value(Glu)[0]))
 
     # Hole method for initiation - very slow!!
-    neuron_hole = HoleChannel([K, Na, Cl, Ca], 1.0)
+    neuron_hole = HoleChannel([K, Na, Cl], 1.0)
     density = np.zeros(model.N)
     density[:1] = 1.0
     neuron_mem.addChannel(neuron_hole, density)

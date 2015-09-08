@@ -38,7 +38,7 @@ class MembraneReaction(Reaction):
         self.membrane = membrane
         self.name = name
 
-    def flux(self, system_state, volfractions=None, invalues=None, outvalues=None):
+    def flux(self, system_state, volfrac=None, dotvolfrac=None, invalues=None, outvalues=None):
         """
         """
         pass
@@ -57,7 +57,7 @@ class CompartmentReaction(Reaction):
         self.compartment = compartment
         self.name = name
 
-    def flux(self, system_state, volfraction=None, dotvolfraction=None, invalues=None):
+    def flux(self, system_state, volfrac=None, dotvolfrac=None, invalues=None):
         """
 
         :param system_state:

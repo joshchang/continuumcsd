@@ -112,14 +112,32 @@ class CSDModelInterval(CSDModel):
                 '''
             elif issubclass(type(key), Reaction):
                 if type(key) is MembraneReaction:
-                    ydot, flux = key.get_dot_InternalVars(system_state, invalues=concentrations[key.inside],
-                                                          outvalues=concentrations[key.outside])
-                    temp[index:(index + length)] = ydot
+                    flux = customdict(float)
+                    if length > 0:
+                        ydot, flux = key.get_dot_InternalVars(system_state,
+                                                              invalues=concentrations[key.membrane.inside],
+                                                              outvalues=concentrations[key.membrane.outside])
+                        temp[index:(index + length)] = ydot
+                    else:
+                        flux = key.flux(system_state, invalues=concentrations[key.membrane.inside],
+                                        outvalues=concentrations[key.membrane.outside])
+                    compartmentfluxes[key.membrane.outside].update(
+                        scalar_mult_dict(flux, key.membrane.inside.density * key.membrane.outside.density))
+                    compartmentfluxes[key.membrane.inside].update(
+                        scalar_mult_dict(flux, -key.membrane.inside.density * key.membrane.outside.density))
 
                 elif type(key) is CompartmentReaction:
-                    flux = key.flux(system_state)
-                    ydot, flux = key.get_dot_InternalVars()
-                    temp[index:(index + length)] = ydot
+
+                    if length > 0:
+                        ydot, flux = key.get_dot_InternalVars(system_state,
+                                                              volfraction=volumefractions[key.compartment],
+                                                              dotvolfraction=waterflows[key.compartment],
+                                                              invalues=concentrations[key.compartment])
+                        temp[index:(index + length)] = ydot
+                    else:
+                        flux = key.flux(system_state)
+
+                    compartmentfluxes[key.compartment].update(scalar_mult_dict(flux, key.compartment.density))
 
 
             elif not issubclass(type(key), Compartment):

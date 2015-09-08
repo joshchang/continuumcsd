@@ -167,6 +167,10 @@ class CSDModel(object):
                     reaction.system_state_offset = index
                     reaction.internalLength = len(tmp)
                     index += len(tmp)
+                else:
+                    self.internalVars.extend([(reaction, 0, index)])
+                    reaction.system_state_offset = index
+                    reaction.internalLength = 0
             # Register any reactions associated with the given membrane?
         """
         Compartments at the end, so we may reuse some computations
@@ -194,6 +198,10 @@ class CSDModel(object):
                     reaction.system_state_offset = index
                     reaction.internalLength = len(tmp)
                     index += len(tmp)
+                else:
+                    self.internalVars.extend([(reaction, 0, index)])
+                    reaction.system_state_offset = index
+                    reaction.internalLength = 0
 
         for key, val in self.volfrac.items():
             self.volfrac[key] = val*np.ones(self.N)
