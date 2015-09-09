@@ -86,16 +86,15 @@ neuron_mem.addChannel(NaPChannel(quasi_steady=True), 100.)  # 100 per neuron
 neuron_mem.addChannel(KDRChannel(),10000.) # number of channels per neuron
 neuron_mem.addChannel(KAChannel(quasi_steady=True), 10000.)  # number of channels per neuron
 neuron_mem.addChannel(SKChannel(), 1000.)  # SK
-neuron_mem.addChannel(CaPChannel(),10000.) # number of channels per neuron
-neuron_mem.addChannel(CaLChannel(),10000.) # number of channels per neuron
-neuron_mem.addChannel(CaNChannel(quasi_steady=True), 10000.)  # number of channels per neuron
-neuron_mem.addChannel(gNMDAChannel(),10000.)
-#neuron_mem.addChannel(NMDAChannel(),10000.)
+neuron_mem.addChannel(CaPChannel(), 1000.)  # number of channels per neuron
+neuron_mem.addChannel(CaLChannel(), 1000.)  # number of channels per neuron
+neuron_mem.addChannel(CaNChannel(quasi_steady=True), 1000.)  # number of channels per neuron
+neuron_mem.addChannel(gNMDAChannel(), 100.)
 
-neuron_mem.addChannel(PMCAPump(), 50000)  # PMCA pump
-neuron_mem.addChannel(NaCaExchangePump(), 50000)  # sodium-calcium exchanger
-neuron_mem.addChannel(NaKATPasePump(), 1.5e5)  # 5000 ATPase per neuron
-neuron_mem.addChannel(NonSpecificChlorideChannel(phi0), 1e7)
+neuron_mem.addChannel(PMCAPump(), 4e5)  # PMCA pump
+neuron_mem.addChannel(NaCaExchangePump(), 4e5)  # sodium-calcium exchanger
+neuron_mem.addChannel(NaKATPasePump(), 5e4)  # 5000 ATPase per neuron
+neuron_mem.addChannel(NonSpecificChlorideChannel(phi0), 1e5)
 neuron_mem.addChannel(AquaPorin(), 1e-6)  # Add water exchange
 
 glial_mem.addChannel(KIRChannel(), 10000)  # KIR Channel
@@ -106,12 +105,12 @@ glial_mem.addChannel(NaCaExchangePump(), 1000)  # sodium-calcium exchanger
 glial_mem.addChannel(NonSpecificChlorideChannel(phig0), 1e7)
 glial_mem.addChannel(AquaPorin(), 1e-6)  # Add water exchange
 
-glial_mem.addChannel(CaPChannel(),10000.) # number of channels per neuron
-glial_mem.addChannel(CaLChannel(),10000.) # number of channels per neuron
+glial_mem.addChannel(CaPChannel(), 1000.)  # number of channels per neuron
+glial_mem.addChannel(CaLChannel(), 1000.)  # number of channels per neuron
 #glial_mem.addChannel(CaNChannel(),10000.) # number of channels per neuron
 
 # add glutamate exocytosis
-glutamate_exo = GlutmateExocytosis("G_exo", neuron_mem, 1000)
+glutamate_exo = GlutmateExocytosis("G_exo", neuron_mem, 100)
 neuron_mem.addReaction(glutamate_exo)
 
 
@@ -146,6 +145,7 @@ def main():
                         help="prefix for output files", metavar="PREFIX")
     results = parser.parse_args()
     prefix = results.prefix
+    if prefix is None: prefix = ""
 
     print('Result files will have prefix: ' + prefix)
 
@@ -153,9 +153,9 @@ def main():
     print('{:<7.3f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:10.6f} {:10.6f}'.format(model.odesolver.t, 1e3*neuron_mem.phi()[0], 1e3*glial_mem.phi()[0], 1e3*ecs.value(K)[0], 1e3*neuron.value(K)[0], 1e3*glia.value(K)[0], 1e3*ecs.value(Cl)[0], 1e3*neuron.value(Ca)[0], 1e3*ecs.value(Glu)[0]))
 
     # Hole method for initiation - very slow!!
-    neuron_hole = HoleChannel([K, Na, Cl], 1.0)
+    neuron_hole = HoleChannel([K, Na, Cl, Ca], 0.1)
     density = np.zeros(model.N)
-    density[:1] = 1.0
+    density[0] = 1.0
     neuron_mem.addChannel(neuron_hole, density)
 
     # glial_hole = HoleChannel([K,Na,Cl],1e-2)
@@ -310,8 +310,8 @@ def main():
     fig = plt.figure()
     ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(110, 140))
     line, = ax.plot([], [], lw=2)
-    tt0 = ax.text(120, 28, 'K_g (mM)')
-    ttl = ax.text(120, 25, '')
+    tt0 = ax.text(120, 130, 'K_g (mM)')
+    ttl = ax.text(120, 125, '')
 
     dt = 200
     frames = len(system_states) / dt
@@ -338,6 +338,33 @@ def main():
 
     ##########################################################
 
+    fig = plt.figure()
+    ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(120, 150))
+    line, = ax.plot([], [], lw=2)
+    tt0 = ax.text(120, 150, 'K_n (mM)')
+    ttl = ax.text(120, 140, '')
+
+    dt = 200
+    frames = len(system_states) / dt
+
+    def init():
+        line.set_data([], [])
+        ttl.set_text('t=' + str(0.0))
+        return line,
+
+    def animate(i):
+        line.set_data(model.x * 1e6, neuron.value(K, system_states[i * dt]) * 1e3)
+        ttl.set_text('t=' + str(t[i * dt]))
+        return line,
+
+    animation.FuncAnimation(fig, animate, init_func=init,
+                            frames=frames, interval=100, blit=True)
+
+    Kn_animation = animation.FuncAnimation(fig, animate, init_func=init,
+                                           frames=frames, interval=100, blit=True)
+    Kn_animation.save(prefix + "Kn.gif", writer=writer)
+
+    ##########################################################
 
     fig = plt.figure()
     ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(-75, 30))

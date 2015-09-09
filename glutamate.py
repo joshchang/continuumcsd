@@ -29,7 +29,7 @@ class GlutmateExocytosis(MembraneReaction):
         Cai = invalues[Ca] if invalues is not None else self.membrane.inside.value(Ca,system_state)
         glu = invalues[Glu] if invalues is not None else self.membrane.inside.value(Glu,system_state)
         Prel = 1.0 / (1.0 + np.power(20e-6 / Cai, 4.0))  # - self.P_rel0
-        return {Glu: Prel * glu * 1e6 * self.Nrel}
+        return {Glu: Prel * glu * self.Nrel}
 
     def equilibriate(self):
         Cai = self.membrane.inside.value(Ca)

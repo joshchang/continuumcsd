@@ -111,7 +111,7 @@ class CSDModelInterval(CSDModel):
                 Settle for now on the cludgy solution of putting all reactions into model.internalvars
                 '''
             elif issubclass(type(key), Reaction):
-                if type(key) is MembraneReaction:
+                if issubclass(type(key), MembraneReaction):
                     flux = customdict(float)
                     if length > 0:
                         ydot, flux = key.get_dot_InternalVars(system_state,
@@ -126,7 +126,7 @@ class CSDModelInterval(CSDModel):
                     compartmentfluxes[key.membrane.inside].update(
                         scalar_mult_dict(flux, -key.membrane.inside.density * key.membrane.outside.density))
 
-                elif type(key) is CompartmentReaction:
+                elif issubclass(type(key), CompartmentReaction):
 
                     if length > 0:
                         ydot, flux = key.get_dot_InternalVars(system_state,
