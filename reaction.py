@@ -68,11 +68,8 @@ class CompartmentReaction(Reaction):
         """
         pass
 
-    def get_freeCapacity(self, system_state):
-        pass
-
-    def get_InternalVars(self, system_state):
-        pass
+    def getInternalVars(self):
+        return None
 
     def get_dot_InternalVars(self,system_state):
         pass

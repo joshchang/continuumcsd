@@ -25,7 +25,7 @@ import numpy as np
 np.seterr(all='ignore')
 from scipy.integrate import ode
 
-model = CSDModelInterval(N=12,
+model = CSDModelInterval(N=8,
                          dx=100e-6)  # define the model, grid spacing is 100 microns, or approximately two cell widths
 
 # Define the compartments, and the membranes
@@ -69,6 +69,9 @@ neuron.addSpecies(Cl,Cli0,0,'Cl_n')
 neuron.addSpecies(Ca,Cai0,0,'Ca_n')
 neuron.addSpecies(Glu, Glun0, name="g_n")
 
+ecs_glutamate_decay = GlutamateDecay("ecs glutamate decay", ecs)
+ecs.addReaction(ecs_glutamate_decay)
+
 # neuron_CaM = CaMbuffer("CaM_n",neuron,1e-5)
 # neuron.addReaction(neuron_CaM) # Have capacity to buffer .01 mM Ca
 
@@ -81,36 +84,38 @@ glia.addSpecies(Ca, Cag0, 0, 'Ca_g')
 #glia.addReaction(glial_CaM) # Have capacity to buffer .01 mM Ca
 
 # add channels
-neuron_mem.addChannel(NaTChannel(quasi_steady=True), 1000.)  # 10000 per neuron?
+neuron_mem.addChannel(NaTChannel(quasi_steady=True), 10000.)  # 10000 per neuron?
 neuron_mem.addChannel(NaPChannel(quasi_steady=True), 100.)  # 100 per neuron
 neuron_mem.addChannel(KDRChannel(),10000.) # number of channels per neuron
 neuron_mem.addChannel(KAChannel(quasi_steady=True), 10000.)  # number of channels per neuron
-neuron_mem.addChannel(SKChannel(), 1000.)  # SK
-neuron_mem.addChannel(CaPChannel(), 1000.)  # number of channels per neuron
-neuron_mem.addChannel(CaLChannel(), 1000.)  # number of channels per neuron
-neuron_mem.addChannel(CaNChannel(quasi_steady=True), 1000.)  # number of channels per neuron
-neuron_mem.addChannel(gNMDAChannel(), 100.)
+neuron_mem.addChannel(SKChannel(), 25.)  # SK
+neuron_mem.addChannel(CaPChannel(), 10000.)  # number of channels per neuron
+neuron_mem.addChannel(CaLChannel(), 10000.)  # number of channels per neuron
+neuron_mem.addChannel(CaNChannel(quasi_steady=True), 10000.)  # number of channels per neuron
+neuron_mem.addChannel(NMDAChannel(), 500.)
 
-neuron_mem.addChannel(PMCAPump(), 4e5)  # PMCA pump
-neuron_mem.addChannel(NaCaExchangePump(), 4e5)  # sodium-calcium exchanger
-neuron_mem.addChannel(NaKATPasePump(), 5e4)  # 5000 ATPase per neuron
+neuron_mem.addChannel(PMCAPump(), 1e4)  # PMCA pump
+neuron_mem.addChannel(NaCaExchangePump(), 2e4)  # sodium-calcium exchanger
+
+neuron_ATPase = NaKATPasePump()
+neuron_mem.addChannel(neuron_ATPase, 5e4)  # 5000 ATPase per neuron
 neuron_mem.addChannel(NonSpecificChlorideChannel(phi0), 1e5)
 neuron_mem.addChannel(AquaPorin(), 1e-6)  # Add water exchange
 
-glial_mem.addChannel(KIRChannel(), 10000)  # KIR Channel
+glial_mem.addChannel(KIRChannel(), 200.)  # KIR Channel
 glial_mem.addChannel(NaKATPasePump(), 1.4e5)  # 10000000 ATPase per glia
-glial_mem.addChannel(KDRglialChannel(), 17500)
-glial_mem.addChannel(PMCAPump(), 10000)
-glial_mem.addChannel(NaCaExchangePump(), 1000)  # sodium-calcium exchanger
+glial_mem.addChannel(KDRglialChannel(), 17500.)
+glial_mem.addChannel(PMCAPump(), 10000.)
+glial_mem.addChannel(NaCaExchangePump(), 1000.)  # sodium-calcium exchanger
 glial_mem.addChannel(NonSpecificChlorideChannel(phig0), 1e7)
 glial_mem.addChannel(AquaPorin(), 1e-6)  # Add water exchange
 
-glial_mem.addChannel(CaPChannel(), 1000.)  # number of channels per neuron
-glial_mem.addChannel(CaLChannel(), 1000.)  # number of channels per neuron
-#glial_mem.addChannel(CaNChannel(),10000.) # number of channels per neuron
+glial_mem.addChannel(CaPChannel(), 1000.0)  # number of channels per neuron
+glial_mem.addChannel(CaLChannel(), 1000.0)  # number of channels per neuron
+glial_mem.addChannel(CaNChannel(), 10000.)  # number of channels per neuron
 
 # add glutamate exocytosis
-glutamate_exo = GlutmateExocytosis("G_exo", neuron_mem, 100)
+glutamate_exo = GlutmateExocytosis("G_exo", neuron_mem, 10)
 neuron_mem.addReaction(glutamate_exo)
 
 
@@ -131,7 +136,7 @@ system_state = model.getInternalVars()
 y = model.getInternalVars()
 model.odesolver.set_initial_value(y, 0)
 
-stim_duration = 1.0  # poke holes for 1 seconds
+stim_duration = 3.0  # poke holes for 1 seconds
 model.odesolver.t = -stim_duration
 system_states = []
 t = []
@@ -152,14 +157,28 @@ def main():
     print('{:<7} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10}'.format('time', 'V_n','V_g', 'K_e', 'K_n','K_g','Cl_e','Ca_n','g_e') )
     print('{:<7.3f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:10.6f} {:10.6f}'.format(model.odesolver.t, 1e3*neuron_mem.phi()[0], 1e3*glial_mem.phi()[0], 1e3*ecs.value(K)[0], 1e3*neuron.value(K)[0], 1e3*glia.value(K)[0], 1e3*ecs.value(Cl)[0], 1e3*neuron.value(Ca)[0], 1e3*ecs.value(Glu)[0]))
 
-    # Hole method for initiation - very slow!!
-    neuron_hole = HoleChannel([K, Na, Cl, Ca], 0.1)
-    density = np.zeros(model.N)
-    density[0] = 1.0
-    neuron_mem.addChannel(neuron_hole, density)
 
-    # glial_hole = HoleChannel([K,Na,Cl],1e-2)
+    # Hole method for initiation - very slow!!
+    neuron_hole = HoleChannel([K, Na, Cl], 1.0)
+    # neuron_Ca_hole = HoleChannel([Ca], 1e-2)
+    density = np.zeros(model.N)
+    density[:2] = 1.0
+    neuron_mem.addChannel(neuron_hole, density)
+    #neuron_mem.addChannel(neuron_Ca_hole,density)
+
+    #glial_hole = HoleChannel([K,Na, Ca,Cl],1.0e-1)
     #glial_mem.addChannel(glial_hole,density)
+
+
+    """
+    ecs.values[K][0]+=0.040
+    ecs.values[Cl][0]+=0.040
+    y = model.getInternalVars()
+    model.odesolver.set_initial_value(y, 0)
+    # Turn off the ATPase
+    neuron_mem.channeldensity[neuron_ATPase] = np.ones(model.N)*neuron_mem.channeldensity[neuron_ATPase]
+    neuron_mem.channeldensity[neuron_ATPase][:3] = 0 # turn off the ATPase on the left
+    """
 
     try:
         y = model.odesolver.integrate(model.odesolver.t+1e-6)
@@ -173,6 +192,9 @@ def main():
             t.append(model.odesolver.t)
 
         # neuron_mem.removeChannel(neuron_hole)
+        #glial_mem.removeChannel(glial_hole)
+        #model.odesolver.set_initial_value(y)
+        # neuron_mem.channeldensity[neuron_ATPase][:3] = neuron_mem.channeldensity[neuron_ATPase][-1]
         #model.odesolver.set_initial_value(y)
 
         while model.odesolver.successful() and model.odesolver.t < 120.0:
@@ -559,11 +581,11 @@ def main():
     ##########################################################
 
     fig = plt.figure()
-    ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(0, 100))
+    ax = plt.axes(xlim=(0, model.N * model.dx * 1e6), ylim=(0, 1))
     line, = ax.plot([], [], lw=2)
 
-    tt0 = ax.text(120, 0, 'g_ecs (uM)')
-    ttl = ax.text(120, .1, '')
+    tt0 = ax.text(120, .90, 'g_ecs (uM)')
+    ttl = ax.text(120, .80, '')
 
     dt = 200
     frames = len(system_states) / dt
@@ -585,6 +607,9 @@ def main():
                                            frames=frames, interval=100, blit=True)
     vg_animation.save(prefix + "ge.gif", writer=writer)
 
+    ######################################################
+
+    #fig = plt.figure()
 
 if __name__ == "__main__":
     main()

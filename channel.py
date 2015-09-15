@@ -146,7 +146,7 @@ class GHKChannel(Channel):
         if V_m is None: V_m = self.membrane.phi(system_state)
         h = self.get_h(system_state) if self.q>0 else 1.0
         m = self.get_m(system_state) if self.p>0 else 1.0
-        gate = power(m, self.p) * power(h, self.q)
+        gate = power(np.abs(m), self.p) * power(np.abs(h), self.q)
         return {ion: permeability * gate for permeability, ion in zip(self.max_permeability, self.species)}
 
     def permeability_infty(self, system_state=None, V_m = None, invalues=None, outvalues=None):

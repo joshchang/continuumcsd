@@ -45,13 +45,27 @@ class GlutamatePackaging(CompartmentReaction):
     """
     species = [Glu]
 
-
 class GlutamateDecay(CompartmentReaction):
     species = [Glu]
 
-    def __init__(self, name, compartment):
-        super(self.__class__, self).__init__(name, compartment)
+    def __int__(self, name, compartment):
+        self.name = name
+        self.compartment = compartment
+
+    def flux(self, system_state, volfrac=None, dotvolfrac=None, invalues=None):
+        glu = self.compartment.value(Glu, system_state) if invalues is None else invalues[Glu]
+        return {Glu: -glu * 10.0}
+
+    def equilibriate(self):
         pass
+
+
+class GlutamateReuptake(MembraneReaction):
+    species = [Glu]
+
+    def __init__(self, name, membrane, Nrel):
+        super(self.__class__, self).__init__(name, membrane)
+        self.Nrel = Nrel
 
     def get_InternalVars(self, system_state):
         return None

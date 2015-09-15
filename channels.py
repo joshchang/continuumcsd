@@ -89,7 +89,7 @@ class KAChannel(GHKChannel):
         return 500/(exp(-(200*V_m+11.98))+1)
 
 
-class NMDAChannel(GHKChannel):
+class NMDAChannel_Huaxiong(GHKChannel):
     p = 1
     q = 1
     # name = 'GLutamate-independent NMDA channel'
@@ -107,6 +107,57 @@ class NMDAChannel(GHKChannel):
 
     def betah(self, V_m):
         return .5 - self.alphah(V_m)
+
+
+class NMDAChannel(GHKChannel):
+    p = 0
+    q = 0
+    species = [Na, K, Ca]
+    max_permeability = np.array([1, 1, 20]) * 7.0e-12
+    r1 = 72000.0  # 72 /mM/s
+    r2 = 6.6  # 6.6/s
+    Popen = 0
+    # name = 'Glutamate-dependent NMDA Channel'
+
+    def get_dot_InternalVars(self, system_state, t):
+        # Glutamate gating variable
+        Popen = self.get_Popen(system_state)
+        g = self.membrane.outside.value(Glu, system_state)
+        dotPopen = self.r1 * g * (1.0 - Popen) - self.r2 * Popen
+        return dotPopen
+
+    def get_Popen(self, system_state=None):
+        if system_state is None:
+            return self.Popen
+        return system_state[self.system_state_offset + 2 * self.N:self.system_state_offset + 3 * self.N]
+
+    def getInternalVars(self):
+        Popen = self.get_Popen()
+        return Popen
+
+    def setInternalVars(self, system_state):
+        self.Popen = self.get_Popen(system_state)
+
+    def permeability(self, system_state, V_m=None, invalues=None, outvalues=None):
+        voltage_dependence = exp(62.0 * V_m) / (exp(62.0 * V_m) + 1.0)
+        Popen = self.get_Popen(system_state)
+        return {species: Popen * voltage_dependence * self.max_permeability[j] for j, species in
+                enumerate(self.species)}
+
+    def vectorizevalues(self):
+        if self.Popen is not None and not isinstance(self.Popen, collections.Sequence):
+            self.Popen = np.ones(self.N) * self.Popen
+
+    def equilibriate(self, V_m=None, system_state=None):
+        g = self.membrane.outside.value(Glu, system_state)
+        self.Popen = self.r1 * g / (self.r1 * g + self.r2)
+
+    def permeability_infty(self, system_state=None, V_m=None):
+        voltage_dependence = exp(62.0 * V_m) / (exp(62.0 * V_m) + 1.0)
+        g = self.membrane.outside.value(Glu, system_state)
+        Popen = self.r1 * g / (self.r1 * g + self.r2)
+        return {species: Popen * voltage_dependence * self.max_permeability[j] for j, species in
+                enumerate(self.species)}
 
 
 class NaKATPasePump(Channel):
@@ -196,7 +247,7 @@ class KIRChannel(GHKChannel):
         return self.permeability(system_state, V_m, invalues, outvalues)
 
 
-class gNMDAChannel(NMDAChannel):
+class gNMDAChannel_Huaxiong(NMDAChannel_Huaxiong):
     """
     Glutamate-dependent NMDA Channel
     """
@@ -227,7 +278,7 @@ class gNMDAChannel(NMDAChannel):
         super(NMDAChannel, self).setInternalVars(system_state)
         self.Popen = self.get_Popen(system_state)
 
-    def permeability(self, system_state=None, V_m = None, invalues=None, outvalues=None):
+    def permeability(self, system_state, V_m=None, invalues=None, outvalues=None):
         old = super(NMDAChannel, self).permeability(system_state)  # this is a dict
         return scalar_mult_dict(old, self.get_Popen(system_state))
 
