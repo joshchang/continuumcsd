@@ -139,7 +139,7 @@ class NMDAChannel(GHKChannel):
         self.Popen = self.get_Popen(system_state)
 
     def permeability(self, system_state, V_m=None, invalues=None, outvalues=None):
-        voltage_dependence = exp(62.0 * V_m) / (exp(62.0 * V_m) + 1.0)
+        voltage_dependence = exp(62.0 * V_m) / (exp(62.0 * V_m) + 0.28)
         Popen = self.get_Popen(system_state)
         return {species: Popen * voltage_dependence * self.max_permeability[j] for j, species in
                 enumerate(self.species)}
@@ -153,7 +153,7 @@ class NMDAChannel(GHKChannel):
         self.Popen = self.r1 * g / (self.r1 * g + self.r2)
 
     def permeability_infty(self, system_state=None, V_m=None):
-        voltage_dependence = exp(62.0 * V_m) / (exp(62.0 * V_m) + 1.0)
+        voltage_dependence = exp(62.0 * V_m) / (exp(62.0 * V_m) + 0.28)
         g = self.membrane.outside.value(Glu, system_state)
         Popen = self.r1 * g / (self.r1 * g + self.r2)
         return {species: Popen * voltage_dependence * self.max_permeability[j] for j, species in
@@ -162,7 +162,7 @@ class NMDAChannel(GHKChannel):
 
 class NaKATPasePump(Channel):
     species = [K, Na]
-    Imax = np.array([-2.0, 3.0]) * 3e-11  # 2K per 3Na Amperes
+    Imax = np.array([-2.0, 3.0]) * 3e-10  # 2K per 3Na Amperes
 
     def current(self, system_state=None, V_m=None, invalues=None, outvalues=None):
         Ke = self.membrane.outside.value(K,system_state) if outvalues is None else outvalues[K]
@@ -175,7 +175,7 @@ class NaKATPasePump(Channel):
 class NaCaExchangePump(Channel):
     # taken from Bennett et al.
     species = [Na, Ca]
-    gmax = np.array([-3, 1]) * 2e-9
+    gmax = np.array([-1.5, 1.0]) * 4.0e-7
 
     def current(self, system_state=None, V_m = None, invalues=None, outvalues=None):
         if V_m is None: V_m = self.membrane.phi(system_state)
@@ -194,7 +194,8 @@ class NaCaExchangePump(Channel):
 
         # Maybe this is faster??
 
-        I = np.where(V_m<0, (power(Nai / Nae, 3) * (Cae / Cai) * exp(V_m / phi) - 2.5) / (1 + power(.0875 / Nae, 3)) / (
+        I = -np.where(V_m < 0,
+                      (power(Nai / Nae, 3) * (Cae / Cai) * exp(V_m / phi) - 2.5) / (1 + power(.0875 / Nae, 3)) / (
         Cae / Cai + 1.38e-3 / Cai) / (exp(0.65 * V_m / phi) + 0.1) ,  (power(Nai / Nae, 3) * (Cae / Cai) - 2.5 * exp(-V_m / phi)) / (1 + power(.0875 / Nae, 3)) / (
             Cae / Cai + 1.38e-3 / Cai) / (exp(-0.35 * V_m / phi) + 0.1 * exp(-V_m / phi)))
 
@@ -203,7 +204,7 @@ class NaCaExchangePump(Channel):
 
 class PMCAPump(Channel):
     species = [Ca]
-    gmax = 2e-10  # @TODO Figure out this parameter!!
+    gmax = 7.55e-7  # @TODO Figure out this parameter!!
 
     def current(self, system_state = None, V_m=None, invalues=None, outvalues=None):
         h = 1.0
@@ -318,7 +319,7 @@ class KDRglialChannel(GHKChannel):
 class CaLChannel(GHKChannel):
     #Somjen channel: https://senselab.med.yale.edu/ModelDB/ShowModel.cshtml?model=113446&file=%5cNEURON-2008b%5ccal2.mod
     species = [Ca]
-    max_permeability = np.array([1e-12])
+    max_permeability = np.array([1e-10])
     p = 2
     q = 0
     def alpham(self, V_m, system_state = None):
@@ -329,7 +330,7 @@ class CaLChannel(GHKChannel):
 
 class CaPChannel(GHKChannel):
     species = [Ca]
-    max_permeability = np.array([4e-12])
+    max_permeability = np.array([4e-10])
     p = 1
     q = 1
     def alphah(self, V_m, system_state = None):
@@ -344,7 +345,7 @@ class CaPChannel(GHKChannel):
 
 class CaNChannel(GHKChannel):
     species = [Ca]
-    max_permeability = np.array([4e-12])
+    max_permeability = np.array([4e-10])
     tau = 1e-3
     V_h = -4.0e-3
     kappa = 6.3e-3

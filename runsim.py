@@ -25,13 +25,13 @@ import numpy as np
 np.seterr(all='ignore')
 from scipy.integrate import ode
 
-model = CSDModelInterval(N=8,
+model = CSDModelInterval(N=16,
                          dx=100e-6)  # define the model, grid spacing is 100 microns, or approximately two cell widths
 
 # Define the compartments, and the membranes
 ecs = Compartment("ecs")
 ecs.porosity_adjustment = False  # @TODO!!!
-neuron = CellCompartment("neuron",density = 2e5) # 2e5 neurons per meter, 4e10 per sq meter
+neuron = CellCompartment("neuron", density=8e5)  # 2e5 neurons per meter, 4e10 per sq meter
 glia = CellCompartment("glia",density = 2e5) #2e5 glia per meter
 
 neuronal_er = CellCompartment("neuron_er",density = 2e5)
@@ -88,31 +88,31 @@ neuron_mem.addChannel(NaTChannel(quasi_steady=True), 10000.)  # 10000 per neuron
 neuron_mem.addChannel(NaPChannel(quasi_steady=True), 100.)  # 100 per neuron
 neuron_mem.addChannel(KDRChannel(),10000.) # number of channels per neuron
 neuron_mem.addChannel(KAChannel(quasi_steady=True), 10000.)  # number of channels per neuron
-neuron_mem.addChannel(SKChannel(), 25.)  # SK
+neuron_mem.addChannel(SKChannel(), 10000.)  # SK
 neuron_mem.addChannel(CaPChannel(), 10000.)  # number of channels per neuron
 neuron_mem.addChannel(CaLChannel(), 10000.)  # number of channels per neuron
 neuron_mem.addChannel(CaNChannel(quasi_steady=True), 10000.)  # number of channels per neuron
 neuron_mem.addChannel(NMDAChannel(), 500.)
 
-neuron_mem.addChannel(PMCAPump(), 1e4)  # PMCA pump
-neuron_mem.addChannel(NaCaExchangePump(), 2e4)  # sodium-calcium exchanger
+neuron_mem.addChannel(PMCAPump(), 1e2)  # PMCA pump
+neuron_mem.addChannel(NaCaExchangePump(), 5e4)  # sodium-calcium exchanger
 
 neuron_ATPase = NaKATPasePump()
-neuron_mem.addChannel(neuron_ATPase, 5e4)  # 5000 ATPase per neuron
+neuron_mem.addChannel(neuron_ATPase, 5.0e4)  # 5000 ATPase per neuron
 neuron_mem.addChannel(NonSpecificChlorideChannel(phi0), 1e5)
-neuron_mem.addChannel(AquaPorin(), 1e-6)  # Add water exchange
+neuron_mem.addChannel(AquaPorin(), 1e-7)  # Add water exchange
 
-glial_mem.addChannel(KIRChannel(), 200.)  # KIR Channel
-glial_mem.addChannel(NaKATPasePump(), 1.4e5)  # 10000000 ATPase per glia
+glial_mem.addChannel(KIRChannel(), 2000.)  # KIR Channel
+glial_mem.addChannel(NaKATPasePump(), 3.0e4)  # 10000000 ATPase per glia
 glial_mem.addChannel(KDRglialChannel(), 17500.)
-glial_mem.addChannel(PMCAPump(), 10000.)
-glial_mem.addChannel(NaCaExchangePump(), 1000.)  # sodium-calcium exchanger
-glial_mem.addChannel(NonSpecificChlorideChannel(phig0), 1e7)
-glial_mem.addChannel(AquaPorin(), 1e-6)  # Add water exchange
+glial_mem.addChannel(PMCAPump(), 3e2)
+glial_mem.addChannel(NaCaExchangePump(), 5e4)  # sodium-calcium exchanger
+glial_mem.addChannel(NonSpecificChlorideChannel(phig0), 1e6)
+glial_mem.addChannel(AquaPorin(), 1e-7)  # Add water exchange
 
-glial_mem.addChannel(CaPChannel(), 1000.0)  # number of channels per neuron
-glial_mem.addChannel(CaLChannel(), 1000.0)  # number of channels per neuron
-glial_mem.addChannel(CaNChannel(), 10000.)  # number of channels per neuron
+glial_mem.addChannel(CaPChannel(), 500.0)  # number of channels per neuron
+# glial_mem.addChannel(CaLChannel(), 1000.0)  # number of channels per neuron
+# glial_mem.addChannel(CaNChannel(), 1000.)  # number of channels per neuron
 
 # add glutamate exocytosis
 glutamate_exo = GlutmateExocytosis("G_exo", neuron_mem, 10)
@@ -160,9 +160,10 @@ def main():
 
     # Hole method for initiation - very slow!!
     neuron_hole = HoleChannel([K, Na, Cl], 1.0)
-    # neuron_Ca_hole = HoleChannel([Ca], 1e-2)
+    #neuron_Ca_hole = HoleChannel([Ca], 1e-2)
     density = np.zeros(model.N)
-    density[:2] = 1.0
+    density[0] = 10.0
+    density[1] = 0.25
     neuron_mem.addChannel(neuron_hole, density)
     #neuron_mem.addChannel(neuron_Ca_hole,density)
 
@@ -214,14 +215,15 @@ def main():
     system_matrix = np.array(system_states)
 
     # save the numpy array
-    np.save(prefix + "system_states", system_matrix)
+    #np.savez(prefix + "system_states", system_matrix)
 
     """
     Do some plotting below
     """
 
-    Writer = animation.writers['imagemagick']
-    writer = Writer(fps=30, metadata=dict(artist='Josh Chang'))
+    # Writer = animation.writers['imagemagick']
+    # writer = Writer(fps=30, metadata=dict(artist='Josh Chang'))
+    writer = animation.AVConvWriter(fps=30, metadata=dict(artist='Josh Chang'))
 
     ##########################################################
     ### Ke
@@ -231,7 +233,7 @@ def main():
     tt0 = ax.text(120, 28, 'K_e (mM)')
     ttl = ax.text(120, 25, '')
 
-    dt = 200
+    dt = 10
     frames = len(system_states) / dt
 
 
@@ -249,7 +251,7 @@ def main():
 
     Ke_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    Ke_animation.save(prefix + "Ke.gif", writer=writer)
+    Ke_animation.save(prefix + "Ke.mp4", writer=writer)
 
     ##########################################################
 
@@ -259,7 +261,7 @@ def main():
     tt0 = ax.text(120, 0.75, 'Ca_e (mM)')
     ttl = ax.text(120, 0.6, '')
 
-    dt = 200
+    dt = 10
     frames = len(system_states) / dt
 
     def init():
@@ -274,7 +276,7 @@ def main():
 
     Cae_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                             frames=frames, interval=100, blit=True)
-    Cae_animation.save(prefix + "Cae.gif", writer=writer)
+    Cae_animation.save(prefix + "Cae.mp4", writer=writer)
 
     ##########################################################
 
@@ -284,7 +286,7 @@ def main():
     tt0 = ax.text(120, 800, 'Ca_n (uM)')
     ttl = ax.text(120, 600, '')
 
-    dt = 200
+    dt = 10
     frames = len(system_states) / dt
 
     def init():
@@ -299,7 +301,7 @@ def main():
 
     Can_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                             frames=frames, interval=100, blit=True)
-    Can_animation.save(prefix + "Can.gif", writer=writer)
+    Can_animation.save(prefix + "Can.mp4", writer=writer)
 
     ##########################################################
 
@@ -309,7 +311,7 @@ def main():
     tt0 = ax.text(120, 42, 'K_e (mM)')
     ttl = ax.text(120, 38, '')
 
-    dt = 200
+    dt = 10
     frames = len(system_states) / dt
 
     def init():
@@ -324,7 +326,7 @@ def main():
 
     Ke_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    Ke_animation.save(prefix + "Ke.gif", writer=writer)
+    Ke_animation.save(prefix + "Ke.mp4", writer=writer)
 
     ##########################################################
 
@@ -335,7 +337,7 @@ def main():
     tt0 = ax.text(120, 130, 'K_g (mM)')
     ttl = ax.text(120, 125, '')
 
-    dt = 200
+    dt = 10
     frames = len(system_states) / dt
 
 
@@ -356,7 +358,7 @@ def main():
 
     Kg_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    Kg_animation.save(prefix + "Kg.gif", writer=writer)
+    Kg_animation.save(prefix + "Kg.mp4", writer=writer)
 
     ##########################################################
 
@@ -366,7 +368,7 @@ def main():
     tt0 = ax.text(120, 150, 'K_n (mM)')
     ttl = ax.text(120, 140, '')
 
-    dt = 200
+    dt = 10
     frames = len(system_states) / dt
 
     def init():
@@ -384,7 +386,7 @@ def main():
 
     Kn_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    Kn_animation.save(prefix + "Kn.gif", writer=writer)
+    Kn_animation.save(prefix + "Kn.mp4", writer=writer)
 
     ##########################################################
 
@@ -394,7 +396,7 @@ def main():
     tt0 = ax.text(120, 20, 'V_n (mV)')
     ttl = ax.text(120, .025, '')
 
-    dt = 200
+    dt = 10
     frames = len(system_states) / dt
 
 
@@ -415,7 +417,7 @@ def main():
 
     Vn_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    Vn_animation.save(prefix + "V_n.gif", writer=writer)
+    Vn_animation.save(prefix + "V_n.mp4", writer=writer)
 
     ##########################################################
 
@@ -426,7 +428,7 @@ def main():
     tt0 = ax.text(120, 20, 'V_g (mV)')
     ttl = ax.text(120, .025, '')
 
-    dt = 200
+    dt = 10
     frames = len(system_states) / dt
 
 
@@ -447,7 +449,7 @@ def main():
 
     Vg_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    Vg_animation.save(prefix + "V_g.gif", writer=writer)
+    Vg_animation.save(prefix + "V_g.mp4", writer=writer)
 
     ##########################################################
 
@@ -458,7 +460,7 @@ def main():
     tt0 = ax.text(120, 0.8, 'v_ecs')
     ttl = ax.text(120, .65, '')
 
-    dt = 200
+    dt = 10
     frames = len(system_states) / dt
 
 
@@ -480,7 +482,7 @@ def main():
 
     vecs_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                              frames=frames, interval=100, blit=True)
-    vecs_animation.save(prefix + "vecs.gif", writer=writer)
+    vecs_animation.save(prefix + "vecs.mp4", writer=writer)
 
     ##########################################################
 
@@ -491,7 +493,7 @@ def main():
     tt0 = ax.text(120, 0.8, 'v_n')
     ttl = ax.text(120, .55, '')
 
-    dt = 200
+    dt = 10
     frames = len(system_states) / dt
 
 
@@ -513,7 +515,7 @@ def main():
 
     vn_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    vn_animation.save(prefix + "vn.gif", writer=writer)
+    vn_animation.save(prefix + "vn.mp4", writer=writer)
 
     ##########################################################
 
@@ -525,7 +527,7 @@ def main():
     tt0 = ax.text(120, .7, 'v_g')
     ttl = ax.text(120, .55, '')
 
-    dt = 200
+    dt = 10
     frames = len(system_states) / dt
 
 
@@ -547,7 +549,7 @@ def main():
 
     vg_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    vg_animation.save(prefix + "vg.gif", writer=writer)
+    vg_animation.save(prefix + "vg.mp4", writer=writer)
 
     ##########################################################
 
@@ -558,7 +560,7 @@ def main():
     tt0 = ax.text(120, .004, 'ECS charge')
     ttl = ax.text(120, .003, '')
 
-    dt = 200
+    dt = 10
     frames = len(system_states) / dt
 
     def init():
@@ -576,7 +578,7 @@ def main():
 
     vg_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    vg_animation.save(prefix + "charge_ecs.gif", writer=writer)
+    vg_animation.save(prefix + "charge_ecs.mp4", writer=writer)
 
     ##########################################################
 
@@ -587,7 +589,7 @@ def main():
     tt0 = ax.text(120, .90, 'g_ecs (uM)')
     ttl = ax.text(120, .80, '')
 
-    dt = 200
+    dt = 10
     frames = len(system_states) / dt
 
     def init():
@@ -605,7 +607,7 @@ def main():
 
     vg_animation = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=frames, interval=100, blit=True)
-    vg_animation.save(prefix + "ge.gif", writer=writer)
+    vg_animation.save(prefix + "ge.mp4", writer=writer)
 
     ######################################################
 

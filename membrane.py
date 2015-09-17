@@ -159,12 +159,12 @@ class Membrane(Coupling):
             channel.membrane = self
 
             normalcurrent = channel.current()
-            permability = -residual/normalcurrent[species]
+            permeability = -residual / normalcurrent[species]
 
-            channel.set_permeability(permability)
+            channel.set_permeability(permeability)
             self.channeldensity[channel] = 1.0
             self.channels.extend([channel])
-            print ("Ion: %s, P_leak: %8.2E" %(str(species),permability))
+            print ("Ion: %s, P_leak: %8.2E" % (str(species), permeability))
 
     def currents(self, system_state = None, V_m = None, invalues = None, outvalues = None):
         """ Compute the instantaneous total currents through the membrane for single cells
