@@ -161,7 +161,7 @@ class Compartment(object):
                     dconc = np.zeros(self.N)
                     dconc[1:-1] = (concentration[2:] - concentration[:-2]) / dx
                     ddconc = np.zeros(self.N)
-                    ddconc[1:-1] = (concentration[2:] - 2 * concentration[1:-1] + concentration[:-2]) / dx ** 2
+                    ddconc[1:-1] = (concentration[2:] - 2 * concentration[1:-1] + concentration[:-2]) / (dx ** 2)
                     ddconc[0] = dconc[1] / dx
                     ddconc[-1] = -dconc[-2] / dx
                     dvolumefraction = np.zeros(self.N)

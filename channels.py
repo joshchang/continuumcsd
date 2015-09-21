@@ -175,7 +175,7 @@ class NaKATPasePump(Channel):
 class NaCaExchangePump(Channel):
     # taken from Bennett et al.
     species = [Na, Ca]
-    gmax = np.array([-1.5, 1.0]) * 4.0e-7
+    gmax = np.array([-1.5, 1.0]) * 4.0e-10
 
     def current(self, system_state=None, V_m = None, invalues=None, outvalues=None):
         if V_m is None: V_m = self.membrane.phi(system_state)
@@ -204,7 +204,7 @@ class NaCaExchangePump(Channel):
 
 class PMCAPump(Channel):
     species = [Ca]
-    gmax = 7.55e-7  # @TODO Figure out this parameter!!
+    gmax = 7.55e-9  # @TODO Figure out this parameter!!
 
     def current(self, system_state = None, V_m=None, invalues=None, outvalues=None):
         h = 1.0

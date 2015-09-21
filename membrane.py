@@ -152,7 +152,8 @@ class Membrane(Coupling):
                 continue
             gmax = -residual/(self.phi()-self.phi_ion(species))
             if gmax<0:
-                print("Adding a leak channel does nothing to balance " + str(species))
+                print(
+                "Adding a leak channel does nothing to balance " + str(species) + ", with current " + str(residual))
                 continue
 
             channel = LeakChannel(species)
@@ -164,7 +165,7 @@ class Membrane(Coupling):
             channel.set_permeability(permeability)
             self.channeldensity[channel] = 1.0
             self.channels.extend([channel])
-            print ("Ion: %s, P_leak: %8.2E" % (str(species), permeability))
+            print ("Ion: %s, P_leak: %8.2E, pre_leak_current: %8.2E" % (str(species), permeability, residual))
 
     def currents(self, system_state = None, V_m = None, invalues = None, outvalues = None):
         """ Compute the instantaneous total currents through the membrane for single cells

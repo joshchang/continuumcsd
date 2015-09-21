@@ -25,13 +25,13 @@ import numpy as np
 np.seterr(all='ignore')
 from scipy.integrate import ode
 
-model = CSDModelInterval(N=16,
-                         dx=100e-6)  # define the model, grid spacing is 100 microns, or approximately two cell widths
+model = CSDModelInterval(N=32,
+                         dx=25e-6)  # define the model, grid spacing is 100 microns, or approximately two cell widths
 
 # Define the compartments, and the membranes
 ecs = Compartment("ecs")
 ecs.porosity_adjustment = False  # @TODO!!!
-neuron = CellCompartment("neuron", density=8e5)  # 2e5 neurons per meter, 4e10 per sq meter
+neuron = CellCompartment("neuron", density=2e5)  # 2e5 neurons per meter, 4e10 per sq meter
 glia = CellCompartment("glia",density = 2e5) #2e5 glia per meter
 
 neuronal_er = CellCompartment("neuron_er",density = 2e5)
@@ -102,9 +102,9 @@ neuron_mem.addChannel(neuron_ATPase, 5.0e4)  # 5000 ATPase per neuron
 neuron_mem.addChannel(NonSpecificChlorideChannel(phi0), 1e5)
 neuron_mem.addChannel(AquaPorin(), 1e-7)  # Add water exchange
 
-glial_mem.addChannel(KIRChannel(), 2000.)  # KIR Channel
-glial_mem.addChannel(NaKATPasePump(), 3.0e4)  # 10000000 ATPase per glia
-glial_mem.addChannel(KDRglialChannel(), 17500.)
+glial_mem.addChannel(KIRChannel(), 200.)  # KIR Channel
+glial_mem.addChannel(NaKATPasePump(), 3.0e3)  # 10000000 ATPase per glia
+glial_mem.addChannel(KDRglialChannel(), 1750.)
 glial_mem.addChannel(PMCAPump(), 3e2)
 glial_mem.addChannel(NaCaExchangePump(), 5e4)  # sodium-calcium exchanger
 glial_mem.addChannel(NonSpecificChlorideChannel(phig0), 1e6)

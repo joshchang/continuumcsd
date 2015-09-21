@@ -4,12 +4,12 @@ author: Joshua C Chang
 
 Import first our libraries
 """
-from compartment import *
-from channels import *
-from compartment import *
-from reaction import *
+# from compartment import *
+# from channels import *
+# from compartment import *
+# from reaction import *
 from membrane import *
-from species import *
+#from species import *
 
 """
 Import other libraries, including dolfin.

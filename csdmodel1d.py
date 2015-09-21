@@ -146,7 +146,6 @@ class CSDModelInterval(CSDModel):
                 except:
                     print(key.name)
 
-
         # Also compute the fluxes and determine the changes in the concentrations
 
         """
