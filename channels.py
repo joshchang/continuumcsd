@@ -217,7 +217,7 @@ class NaCaExchangePump(Channel):
 
 class PMCAPump(Channel):
     species = [Ca]
-    gmax = 7.55e-9  # @TODO Figure out this parameter!!
+    gmax = 7.55e-10  # @TODO Figure out this parameter!!
     name = "PMCA"
 
     def current(self, system_state = None, V_m=None, invalues=None, outvalues=None):
@@ -396,12 +396,16 @@ class SKChannel(GHKChannel):
 
 
 class HoleChannel(Channel):
+    name = "Hole"
     def current(self, system_state=None, V_m=None, invalues = None, outvalues = None):
         if V_m is None: V_m = self.membrane.phi(system_state)
         if invalues is None: invalues = self.membrane.inside.get_val_dict(system_state)
         if outvalues is None: outvalues = self.membrane.outside.get_val_dict(system_state)
-        return {species: self.gmax * (V_m - phi / species.z * (np.log(outvalues[species]) - np.log(invalues[species])))
-                for species in self.species}
+        currents = customdict(float)
+        for species in self.species:
+            currents[species] = self.gmax * (
+            V_m - phi / species.z * (np.log(outvalues[species]) - np.log(invalues[species])))
+        return currents
 
     def __init__(self, species, gmax):
         self.species = species

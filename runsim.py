@@ -84,36 +84,34 @@ glia.addSpecies(Ca, Cag0, 0, 'Ca_g')
 #glia.addReaction(glial_CaM) # Have capacity to buffer .01 mM Ca
 
 # add channels
+print("Adding neuron channels")
 neuron_mem.addChannel(NaTChannel(quasi_steady=True), 10000.)  # 10000 per neuron?
 neuron_mem.addChannel(NaPChannel(quasi_steady=True), 100.)  # 100 per neuron
 neuron_mem.addChannel(KDRChannel(),10000.) # number of channels per neuron
 neuron_mem.addChannel(KAChannel(quasi_steady=True), 10000.)  # number of channels per neuron
 neuron_mem.addChannel(SKChannel(), 10000.)  # SK
-neuron_mem.addChannel(CaPChannel(), 10000.)  # number of channels per neuron
-neuron_mem.addChannel(CaLChannel(), 10000.)  # number of channels per neuron
+neuron_mem.addChannel(CaPChannel(), 100.)  # number of channels per neuron
+neuron_mem.addChannel(CaLChannel(), 100.)  # number of channels per neuron
 neuron_mem.addChannel(CaNChannel(quasi_steady=True), 10000.)  # number of channels per neuron
 neuron_mem.addChannel(NMDAChannel(), 500.)
 
-neuron_mem.addChannel(PMCAPump(), 1e2)  # PMCA pump
-neuron_mem.addChannel(NaCaExchangePump(), 5e4)  # sodium-calcium exchanger
+neuron_mem.addChannel(PMCAPump(), 1e3)  # PMCA pump
+neuron_mem.addChannel(NaCaExchangePump(), 1e3)  # sodium-calcium exchanger
 
 neuron_ATPase = NaKATPasePump()
 neuron_mem.addChannel(neuron_ATPase, 5.0e4)  # 5000 ATPase per neuron
 neuron_mem.addChannel(NonSpecificChlorideChannel(phi0), 1e5)
 neuron_mem.addChannel(AquaPorin(), 1e-7)  # Add water exchange
 
+print("\nAdding glial channels")
 glial_mem.addChannel(KIRChannel(), 200.)  # KIR Channel
 glial_mem.addChannel(NaKATPasePump(), 3.0e3)  # 10000000 ATPase per glia
-glial_mem.addChannel(KDRglialChannel(), 1750.)
+glial_mem.addChannel(KDRglialChannel(), 17500.)
 glial_mem.addChannel(PMCAPump(), 3e2)
 glial_mem.addChannel(NaCaExchangePump(), 5e4)  # sodium-calcium exchanger
 glial_mem.addChannel(NonSpecificChlorideChannel(phig0), 1e6)
 glial_mem.addChannel(AquaPorin(), 1e-7)  # Add water exchange
-
 glial_mem.addChannel(CaPChannel(), 500.0)  # number of channels per neuron
-# glial_mem.addChannel(CaLChannel(), 1000.0)  # number of channels per neuron
-# glial_mem.addChannel(CaNChannel(), 1000.)  # number of channels per neuron
-
 # add glutamate exocytosis
 glutamate_exo = GlutmateExocytosis("G_exo", neuron_mem, 10)
 neuron_mem.addReaction(glutamate_exo)
@@ -150,25 +148,26 @@ def main():
                         help="prefix for output files", metavar="PREFIX")
     results = parser.parse_args()
     prefix = results.prefix
+
     if prefix is None: prefix = ""
 
     print('Result files will have prefix: ' + prefix)
 
-    print('{:<7} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10}'.format('time', 'V_n','V_g', 'K_e', 'K_n','K_g','Cl_e','Ca_n','g_e') )
-    print('{:<7.3f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:10.6f} {:10.6f}'.format(model.odesolver.t, 1e3*neuron_mem.phi()[0], 1e3*glial_mem.phi()[0], 1e3*ecs.value(K)[0], 1e3*neuron.value(K)[0], 1e3*glia.value(K)[0], 1e3*ecs.value(Cl)[0], 1e3*neuron.value(Ca)[0], 1e3*ecs.value(Glu)[0]))
-
-
     # Hole method for initiation - very slow!!
     neuron_hole = HoleChannel([K, Na, Cl], 1.0)
-    #neuron_Ca_hole = HoleChannel([Ca], 1e-2)
+    # neuron_Ca_hole = HoleChannel([Ca], 1e-2)
     density = np.zeros(model.N)
     density[0] = 10.0
     density[1] = 0.25
     neuron_mem.addChannel(neuron_hole, density)
-    #neuron_mem.addChannel(neuron_Ca_hole,density)
+    # neuron_mem.addChannel(neuron_Ca_hole,density)
 
-    #glial_hole = HoleChannel([K,Na, Ca,Cl],1.0e-1)
-    #glial_mem.addChannel(glial_hole,density)
+    # glial_hole = HoleChannel([K,Na, Ca,Cl],1.0e-1)
+    # glial_mem.addChannel(glial_hole,density)
+
+
+    print('{:<7} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10}'.format('time', 'V_n','V_g', 'K_e', 'K_n','K_g','Cl_e','Ca_n','g_e') )
+    print('{:<7.3f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:<10.6f} {:10.6f} {:10.6f}'.format(model.odesolver.t, 1e3*neuron_mem.phi()[0], 1e3*glial_mem.phi()[0], 1e3*ecs.value(K)[0], 1e3*neuron.value(K)[0], 1e3*glia.value(K)[0], 1e3*ecs.value(Cl)[0], 1e3*neuron.value(Ca)[0], 1e3*ecs.value(Glu)[0]))
 
 
     """

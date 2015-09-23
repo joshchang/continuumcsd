@@ -159,6 +159,7 @@ class Membrane(Coupling):
 
             channel = LeakChannel(species)
             channel.membrane = self
+            channel.name = str(species) + "leak"
 
             normalcurrent = channel.current()
             permeability = -residual / normalcurrent[species]
