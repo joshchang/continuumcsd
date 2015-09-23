@@ -10,6 +10,7 @@ from numpy import power, exp, log, sqrt, sum
 from params import *
 from species import *
 import numpy as np
+from customdict import *
 import math
 
 
@@ -20,6 +21,7 @@ def scalar_mult_dict(dictionary, scalar):
 class Channel(object):
     system_state_offset = 0
     N = 1
+    name = "Generic Channel"  # overwrite this
     """Generic ion channel class (also emcompasses pumps)
         Args:
             name (String): name of channel
@@ -55,6 +57,7 @@ class Channel(object):
         """
         Equilibriate the internal state
         """
+        print(str(self) + " single-channel rest-current: " + str(self.current()) + "A")
         return
 
     def getInternalVars(self): return None
@@ -63,6 +66,9 @@ class Channel(object):
 
     def vectorizevalues(self):
         pass
+
+    def __str__(self):
+        return self.name
 
 
 class GHKChannel(Channel):
@@ -106,8 +112,10 @@ class GHKChannel(Channel):
                                          exp(V_m * species.z / phi) - 1.0)) \
                 for species in self.species
                 ]
-
-        return {ion: current for ion, current in zip(self.species, I)}
+        currents = customdict(float)
+        for ion, current in zip(self.species, I):
+            currents[ion] = current
+        return currents
 
     def get_h(self, system_state=None):
         """
@@ -190,7 +198,10 @@ class GHKChannel(Channel):
                 for species in self.species
                 ]
 
-        return {ion: current for ion, current in zip(self.species, I)}
+        currents = customdict(float)
+        for ion, current in zip(self.species, I):
+            currents[ion] = current
+        return currents
 
     def mdot(self, V_m=None, m=None):
         """ Compute dm/dt
@@ -230,6 +241,7 @@ class GHKChannel(Channel):
             self.h = self.hinfty(V_m)
         else:
             self.h = 1.0
+        print(str(self) + " single-channel rest-current: " + str(self.current()) + "A")
 
     def alpham(self, system_state=None):
         """

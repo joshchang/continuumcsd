@@ -16,3 +16,6 @@ class customdict(defaultdict):
 
         for key, val in other.iteritems():
             self[key]+= val
+
+    def __str__(self):
+        return (" ".join([str(key) + ":" + str(val) for key, val in self.iteritems()]))

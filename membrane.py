@@ -147,6 +147,7 @@ class Membrane(Coupling):
            Find permeabilities for GHK leak currents
         """
         currents = self.currents()  # these are the residual currents to balance
+        print("Balancing currents between the " + str(self.inside) + " and the " + str(self.outside))
         for species, residual in currents.iteritems():
             if abs(self.phi()-self.phi_ion(species))<1e-20:
                 continue
