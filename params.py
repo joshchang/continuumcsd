@@ -38,7 +38,7 @@ phi0 = -70e-3 #V
 phig0 = -85e-3
 Cae0 = 1e-3
 Cle0 = Ke0+Nae0+2*Cae0
-ge0 = 4e-6 #M http://www.jneurosci.org/content/27/36/9736.full
+ge0 = 4e-8  # M http://www.jneurosci.org/content/27/36/9736.full
 Glun0 = 5e-4  # who knows?? Tune this until we have exhaustion on the right kinetics
 
 Cli0 = exp(phi0/phi)*Cle0

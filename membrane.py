@@ -14,10 +14,18 @@ def scalar_mult_dict(dictionary, scalar):
 
     :type scalar: scalar number
     """
-    return { key: scalar*value for key,value in dictionary.iteritems()}
+    out = customdict(float)
+    for key, value in dictionary.iteritems():
+        out[key] = scalar * value
+    return out
+    # return { key: scalar*value for key,value in dictionary.iteritems()}
 
 def dictmult(dict1,dict2):
-    return {key: value*dict2[key] for key,value in dict1.iteritems()}
+    out = customdict(float)
+    for key, value in dict1.iteritems():
+        out[key] = value * dict2[key]
+    return out
+    #return {key: value*dict2[key] for key,value in dict1.iteritems()}
 
 class Coupling(object):
     """
@@ -146,8 +154,19 @@ class Membrane(Coupling):
         """
            Find permeabilities for GHK leak currents
         """
-        currents = self.currents()  # these are the residual currents to balance
-        print("Balancing currents between the " + str(self.inside) + " and the " + str(self.outside))
+        currents = customdict(float)  # these are the residual currents to balance
+        channelwisecurrents = self.currentsbychannel()
+
+        title = "Whole-cell currents for " + str(self.inside)
+        print("".join(["="] * len(title)))
+
+        print(title)
+        print("".join(["="] * len(title)))
+        for channel, channelcurrents in channelwisecurrents.iteritems():
+            print(str(channel) + " channel whole-cell rest-currents: \n     " + str(channelcurrents) + "A")
+            currents.update(channelcurrents)
+
+        print("\nBalancing currents between the " + str(self.inside) + " and the " + str(self.outside))
         for species, residual in currents.iteritems():
             if abs(self.phi()-self.phi_ion(species))<1e-20:
                 continue
@@ -200,6 +219,42 @@ class Membrane(Coupling):
 
         return counter
 
+    def currentsbychannel(self, system_state=None, V_m=None, invalues=None, outvalues=None):
+        """ Compute the instantaneous currents through the membrane for single cells as a dict by channel
+
+        Value:
+            dict species: current
+        """
+        if V_m is None: V_m = self.phi(system_state)
+        if invalues is None: invalues = self.inside.get_val_dict(system_state)
+        if outvalues is None: outvalues = self.outside.get_val_dict(system_state)
+
+        # Compute first ion-specific terms for GHK
+
+        # Compute ghkcurrents
+        channelwisecurrents = customdict(float)
+        ghkcurrents = {}
+        try:
+            ghkcurrents = {species: np.where(V_m * species.z < 0, F * V_m * species.z ** 2 / phi * (
+            invalues[species] * exp(V_m * species.z / phi) - outvalues[species]) / (exp(V_m * species.z / phi) - 1.0),
+                                             F * V_m * species.z ** 2 / phi * (
+                                             invalues[species] - outvalues[species] * exp(-V_m * species.z / phi)) / (
+                                             1.0 - exp(-V_m * species.z / phi))) \
+                           for species in self.species}
+        except:
+            pass
+
+        for channel in self.channels:
+            if issubclass(type(channel), GHKChannel):
+                channelwisecurrents[channel] = dictmult(
+                    channel.permeability(system_state=system_state, V_m=V_m, invalues=invalues, outvalues=outvalues),
+                    scalar_mult_dict(ghkcurrents, self.channeldensity[channel]))
+            else:
+                channelwisecurrents[channel] = scalar_mult_dict(
+                    channel.current(system_state=system_state, V_m=V_m, invalues=invalues, outvalues=outvalues),
+                    self.channeldensity[channel])
+
+        return channelwisecurrents
 
     def fluxes(self, system_state = None, V_m = None, invalues = None, outvalues = None):
         """ Compute the instantaneous fluxes through the membrane

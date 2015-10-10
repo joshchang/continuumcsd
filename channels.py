@@ -19,7 +19,7 @@ class NaTChannel(GHKChannel):
     species = [Na]
     p = 3
     q = 1
-    max_permeability = np.array([1.7e-12])
+    max_permeability = np.array([1.7e-11])
     name = "NaT"
 
     def alpham(self, V_m):
@@ -64,7 +64,7 @@ class KDRChannel(GHKChannel):
     species = [K]
     p = 2
     q = 0
-    max_permeability = np.array([3.5e-12])
+    max_permeability = np.array([3.5e-11])
     name = "KDR"
 
     def alpham(self, V_m):
@@ -98,7 +98,7 @@ class NMDAChannel_Huaxiong(GHKChannel):
     q = 1
     # name = 'GLutamate-independent NMDA channel'
     species = [Na, K, Ca]
-    max_permeability = np.array([1, 1, 20]) * 7.0e-12
+    max_permeability = np.array([1, 1, 20]) * 7.0e-11
     name = "NMDA"
 
     def alpham(self, V_m):
@@ -118,7 +118,7 @@ class NMDAChannel(GHKChannel):
     p = 0
     q = 0
     species = [Na, K, Ca]
-    max_permeability = np.array([1, 1, 20]) * 7.0e-12
+    max_permeability = np.array([1, 1, 20]) * 7.0e-11
     r1 = 72000.0  # 72 /mM/s
     r2 = 6.6  # 6.6/s
     Popen = 0
@@ -169,7 +169,7 @@ class NMDAChannel(GHKChannel):
 
 class NaKATPasePump(Channel):
     species = [K, Na]
-    Imax = np.array([-2.0, 3.0]) * 3e-10  # 2K per 3Na Amperes
+    Imax = np.array([-2.0, 3.0]) * 3e-11  # 2K per 3Na Amperes
     name = "NaKATPase"
 
     def current(self, system_state=None, V_m=None, invalues=None, outvalues=None):
@@ -182,10 +182,11 @@ class NaKATPasePump(Channel):
         currents[Na] = self.Imax[1] * I
         return currents
 
-class NaCaExchangePump(Channel):
+
+class NaCaExchange(Channel):
     # taken from Bennett et al.
     species = [Na, Ca]
-    gmax = np.array([-1.5, 1.0]) * 4.0e-10
+    gmax = 1.0e-7
     name = "NaCaX"
 
     def current(self, system_state=None, V_m = None, invalues=None, outvalues=None):
@@ -205,24 +206,26 @@ class NaCaExchangePump(Channel):
 
         # Maybe this is faster??
 
-        I = -np.where(V_m < 0,
-                      (power(Nai / Nae, 3) * (Cae / Cai) * exp(V_m / phi) - 2.5) / (1 + power(.0875 / Nae, 3)) / (
-        Cae / Cai + 1.38e-3 / Cai) / (exp(0.65 * V_m / phi) + 0.1) ,  (power(Nai / Nae, 3) * (Cae / Cai) - 2.5 * exp(-V_m / phi)) / (1 + power(.0875 / Nae, 3)) / (
-            Cae / Cai + 1.38e-3 / Cai) / (exp(-0.35 * V_m / phi) + 0.1 * exp(-V_m / phi)))
+        # I = np.where(V_m < 0,
+        #              (power(Nai / Nae, 3) * (Cae / Cai) * exp(V_m / phi) - 2.5) / (1 + power(.0875 / Nae, 3)) / (
+        # Cae / Cai + 1.38e-3 / Cai) / (exp(0.65 * V_m / phi) + 0.1) ,  (power(Nai / Nae, 3) * (Cae / Cai) - 2.5 * exp(-V_m / phi)) / (1 + power(.0875 / Nae, 3)) / (
+        #    Cae / Cai + 1.38e-3 / Cai) / (exp(-0.35 * V_m / phi) + 0.1 * exp(-V_m / phi)))
+        I = (power(Nai / Nae, 3) * (Cae / Cai) * exp(V_m / phi) - 2.5) / (1 + power(.0875 / Nae, 3)) / (
+            Cae / Cai + 1.38e-3 / Cai) / (exp(0.65 * V_m / phi) + 0.1)
         currents = customdict(float)
-        currents[Ca] = self.gmax[1] * I
-        currents[Na] = self.gmax[0] * I
+        currents[Ca] = -self.gmax * I
+        currents[Na] = 1.5 * self.gmax * I
         return currents
 
 
 class PMCAPump(Channel):
     species = [Ca]
-    gmax = 7.55e-10  # @TODO Figure out this parameter!!
+    gmax = 7.55e-11  # @TODO Figure out this parameter!!
     name = "PMCA"
 
     def current(self, system_state = None, V_m=None, invalues=None, outvalues=None):
         h = 1.0
-        KPMCA = 1e-6
+        KPMCA = 2e-7
         Cai = invalues[Ca] if invalues is not None else self.membrane.inside.value(Ca,system_state)
         current = customdict(float)
         current[Ca] = self.gmax / (1 + power(KPMCA / Cai, h))
@@ -250,7 +253,7 @@ class NonSpecificChlorideChannel(GHKChannel):
 
 class KIRChannel(GHKChannel):
     species = [K]
-    max_permeability = 2.0e-15
+    max_permeability = 2.0e-14
     name = "KIR"
 
     def permeability(self, system_state=None, V_m = None, invalues=None, outvalues=None):
@@ -382,7 +385,7 @@ class CaNChannel(GHKChannel):
 
 class SKChannel(GHKChannel):
     # https://senselab.med.yale.edu/ModelDB/ShowModel.cshtml?model=113446&file=%5cNEURON-2008b%5csk.mod
-    max_permeability = 4e-12
+    max_permeability = 4e-11
     name = "SK"
     p = 0
     q = 0

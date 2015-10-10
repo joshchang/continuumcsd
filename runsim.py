@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
+import multiprocessing
 import matplotlib
 
 matplotlib.use('Agg')
@@ -7,14 +8,13 @@ from matplotlib import animation
 import matplotlib.pyplot as plt
 import time
 import argparse
-import sys
 
 """
 Imports for our custom library
 """
 from channels import *
 from compartment import *
-from membrane import *
+from membrane import MembraneReaction, Membrane
 from params import *
 from glutamate import *
 from calciumdynamics import *
@@ -23,7 +23,6 @@ from csdmodel1d import *
 
 import numpy as np
 np.seterr(all='ignore')
-from scipy.integrate import ode
 
 model = CSDModelInterval(N=32,
                          dx=25e-6)  # define the model, grid spacing is 100 microns, or approximately two cell widths
@@ -85,33 +84,35 @@ glia.addSpecies(Ca, Cag0, 0, 'Ca_g')
 
 # add channels
 print("Adding neuron channels")
-neuron_mem.addChannel(NaTChannel(quasi_steady=True), 10000.)  # 10000 per neuron?
-neuron_mem.addChannel(NaPChannel(quasi_steady=True), 100.)  # 100 per neuron
-neuron_mem.addChannel(KDRChannel(),10000.) # number of channels per neuron
-neuron_mem.addChannel(KAChannel(quasi_steady=True), 10000.)  # number of channels per neuron
-neuron_mem.addChannel(SKChannel(), 10000.)  # SK
-neuron_mem.addChannel(CaPChannel(), 100.)  # number of channels per neuron
-neuron_mem.addChannel(CaLChannel(), 100.)  # number of channels per neuron
-neuron_mem.addChannel(CaNChannel(quasi_steady=True), 10000.)  # number of channels per neuron
-neuron_mem.addChannel(NMDAChannel(), 500.)
+neuron_mem.addChannel(NaTChannel(quasi_steady=True), 1000000.)  # 10000 per neuron?
+neuron_mem.addChannel(NaPChannel(quasi_steady=True), 10000.)  # 100 per neuron
+neuron_mem.addChannel(KDRChannel(), 1000000.)  # number of channels per neuron
+neuron_mem.addChannel(KAChannel(quasi_steady=True), 1000000.)  # number of channels per neuron
+neuron_mem.addChannel(SKChannel(), 1000000.)  # SK
+neuron_mem.addChannel(CaPChannel(), 1000.)  # number of channels per neuron
+neuron_mem.addChannel(CaLChannel(), 10000.)  # number of channels per neuron
+neuron_mem.addChannel(CaNChannel(quasi_steady=True), 1000.)  # number of channels per neuron
+neuron_mem.addChannel(NMDAChannel(), 50000.)
 
-neuron_mem.addChannel(PMCAPump(), 1e3)  # PMCA pump
-neuron_mem.addChannel(NaCaExchangePump(), 1e3)  # sodium-calcium exchanger
+neuron_mem.addChannel(PMCAPump(), 5e6)  # PMCA pump
+neuron_mem.addChannel(NaCaExchange(), 2e6)  # sodium-calcium exchanger
 
 neuron_ATPase = NaKATPasePump()
-neuron_mem.addChannel(neuron_ATPase, 5.0e4)  # 5000 ATPase per neuron
+neuron_mem.addChannel(neuron_ATPase, 6e6)  # 5000 ATPase per neuron
 neuron_mem.addChannel(NonSpecificChlorideChannel(phi0), 1e5)
 neuron_mem.addChannel(AquaPorin(), 1e-7)  # Add water exchange
 
 print("\nAdding glial channels")
 glial_mem.addChannel(KIRChannel(), 200.)  # KIR Channel
-glial_mem.addChannel(NaKATPasePump(), 3.0e3)  # 10000000 ATPase per glia
+glial_mem.addChannel(NaKATPasePump(), 3.0e4)  # 10000000 ATPase per glia
 glial_mem.addChannel(KDRglialChannel(), 17500.)
-glial_mem.addChannel(PMCAPump(), 3e2)
-glial_mem.addChannel(NaCaExchangePump(), 5e4)  # sodium-calcium exchanger
+glial_mem.addChannel(PMCAPump(), 1e4)
+glial_mem.addChannel(NaCaExchange(), 1e3)  # sodium-calcium exchanger
 glial_mem.addChannel(NonSpecificChlorideChannel(phig0), 1e6)
 glial_mem.addChannel(AquaPorin(), 1e-7)  # Add water exchange
-glial_mem.addChannel(CaPChannel(), 500.0)  # number of channels per neuron
+
+# glial_mem.addChannel(CaPChannel(), 100.0)  # number of channels per neuron
+
 # add glutamate exocytosis
 glutamate_exo = GlutmateExocytosis("G_exo", neuron_mem, 10)
 neuron_mem.addReaction(glutamate_exo)
@@ -134,7 +135,7 @@ system_state = model.getInternalVars()
 y = model.getInternalVars()
 model.odesolver.set_initial_value(y, 0)
 
-stim_duration = 3.0  # poke holes for 1 seconds
+stim_duration = 5.0  # poke holes for 1 seconds
 model.odesolver.t = -stim_duration
 system_states = []
 t = []
@@ -158,9 +159,16 @@ def main():
     # neuron_Ca_hole = HoleChannel([Ca], 1e-2)
     density = np.zeros(model.N)
     density[0] = 10.0
-    density[1] = 0.25
+    density[1] = 6.7
+    density[2] = 0.5
+
+    # turn off the pump
+    pump_density = np.ones(model.N)
+    pump_density[:3] = 0.0
+    neuron_mem.channeldensity[neuron_ATPase] *= pump_density
+
     neuron_mem.addChannel(neuron_hole, density)
-    # neuron_mem.addChannel(neuron_Ca_hole,density)
+    #neuron_mem.addChannel(neuron_Ca_hole,density)
 
     # glial_hole = HoleChannel([K,Na, Ca,Cl],1.0e-1)
     # glial_mem.addChannel(glial_hole,density)
@@ -191,9 +199,9 @@ def main():
             system_states.append(y)
             t.append(model.odesolver.t)
 
-        # neuron_mem.removeChannel(neuron_hole)
+        neuron_mem.removeChannel(neuron_hole)
         #glial_mem.removeChannel(glial_hole)
-        #model.odesolver.set_initial_value(y)
+        model.odesolver.set_initial_value(y)
         # neuron_mem.channeldensity[neuron_ATPase][:3] = neuron_mem.channeldensity[neuron_ATPase][-1]
         #model.odesolver.set_initial_value(y)
 
